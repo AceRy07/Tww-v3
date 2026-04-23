@@ -3,11 +3,13 @@
 import { useCallback, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search } from 'lucide-react';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function SearchInput() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { locale } = useLanguage();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleChange = useCallback(
@@ -31,15 +33,15 @@ export default function SearchInput() {
   return (
     <div className="relative">
       <Search
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
         size={16}
       />
       <input
         type="search"
         defaultValue={searchParams.get('q') ?? ''}
         onChange={handleChange}
-        placeholder="Search products…"
-        className="w-full pl-9 pr-4 py-2.5 text-sm rounded-lg border border-slate-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 focus:border-[#1A1A1A] transition"
+        placeholder={locale === 'tr' ? 'Urun ara...' : 'Search products...'}
+        className="w-full pl-9 pr-4 py-2.5 text-sm rounded-lg border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground transition"
       />
     </div>
   );

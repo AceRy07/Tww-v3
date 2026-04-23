@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import SmoothScroll from "@/components/layout/SmoothScroll";
+import ThemeProvider from "@/components/providers/ThemeProvider";
+import LanguageProvider from "@/components/providers/LanguageProvider";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -25,13 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white text-[#1A1A1A] font-[var(--font-geist),sans-serif]">
-        <SmoothScroll>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </SmoothScroll>
+    <html lang="en" suppressHydrationWarning className={`${geist.variable} h-full antialiased`}>
+      <body className="min-h-full bg-background text-foreground font-[var(--font-geist),sans-serif]">
+        <ThemeProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

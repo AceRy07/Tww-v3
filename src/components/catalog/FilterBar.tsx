@@ -2,16 +2,20 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { CATEGORIES, COLORS, type Category, type Color } from '@/lib/data';
+import { COLORS, getCategoryOptions, type CategoryKey, type Color } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function FilterBar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { locale } = useLanguage();
 
-  const selectedCategories = searchParams.getAll('cat') as Category[];
+  const categoryOptions = getCategoryOptions(locale);
+
+  const selectedCategories = searchParams.getAll('cat') as CategoryKey[];
   const selectedColors = searchParams.getAll('color') as Color[];
   const minPrice = Number(searchParams.get('minPrice') ?? 0);
   const maxPrice = Number(searchParams.get('maxPrice') ?? 10000);
@@ -42,7 +46,7 @@ export default function FilterBar() {
     [router, pathname, searchParams]
   );
 
-  const toggleCategory = (cat: Category) => {
+  const toggleCategory = (cat: CategoryKey) => {
     const next = selectedCategories.includes(cat)
       ? selectedCategories.filter((c) => c !== cat)
       : [...selectedCategories, cat];
@@ -75,44 +79,44 @@ export default function FilterBar() {
   return (
     <aside className="w-full">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-widest">Filters</h2>
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-widest">
+          {locale === 'tr' ? 'Filtreler' : 'Filters'}
+        </h2>
         {hasFilters && (
           <button
             onClick={clearAll}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-[#1A1A1A] transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X size={12} /> Clear all
+            <X size={12} /> {locale === 'tr' ? 'Temizle' : 'Clear all'}
           </button>
         )}
       </div>
 
-      {/* Categories */}
       <div className="mb-8">
-        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
-          Category
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          {locale === 'tr' ? 'Kategori' : 'Category'}
         </h3>
         <div className="flex flex-col gap-2">
-          {CATEGORIES.map((cat) => (
+          {categoryOptions.map((cat) => (
             <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
+              key={cat.key}
+              onClick={() => toggleCategory(cat.key)}
               className={cn(
                 'text-left text-sm px-3 py-2 rounded-lg transition-all',
-                selectedCategories.includes(cat)
-                  ? 'bg-[#1A1A1A] text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                selectedCategories.includes(cat.key)
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:bg-muted'
               )}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Colors */}
       <div className="mb-8">
-        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
-          Finish / Color
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          {locale === 'tr' ? 'Yuzey / Renk' : 'Finish / Color'}
         </h3>
         <div className="flex flex-wrap gap-2">
           {COLORS.map((c) => (
@@ -123,8 +127,8 @@ export default function FilterBar() {
               className={cn(
                 'group flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all',
                 selectedColors.includes(c.name)
-                  ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-                  : 'border-slate-200 text-slate-600 hover:border-slate-400'
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-muted-foreground hover:border-muted-foreground'
               )}
             >
               <span
@@ -137,44 +141,48 @@ export default function FilterBar() {
         </div>
       </div>
 
-      {/* Price range */}
       <div className="mb-8">
-        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
-          Price Range
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          {locale === 'tr' ? 'Fiyat Araligi' : 'Price Range'}
         </h3>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <label className="text-xs text-slate-400 mb-1 block">Min (₺)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              {locale === 'tr' ? 'Min (₺)' : 'Min (₺)'}
+            </label>
             <input
               type="number"
               min={0}
               max={maxPrice}
               defaultValue={minPrice}
               onBlur={(e) => updateParams({ minPrice: e.target.value || null })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="w-full px-3 py-2 text-sm border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs text-slate-400 mb-1 block">Max (₺)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              {locale === 'tr' ? 'Maks (₺)' : 'Max (₺)'}
+            </label>
             <input
               type="number"
               min={minPrice}
               defaultValue={maxPrice}
               onBlur={(e) => updateParams({ maxPrice: e.target.value || null })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="w-full px-3 py-2 text-sm border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
           </div>
         </div>
       </div>
 
-      {/* Dimensions */}
-      <div className="pt-8 border-t border-slate-100">
-        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4">
-          Dimensions (cm)
+      <div className="pt-8 border-t border-border">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">
+          {locale === 'tr' ? 'Olculer (cm)' : 'Dimensions (cm)'}
         </h3>
         
         <div className="mb-6">
-          <label className="text-xs text-slate-500 font-medium mb-2 block">Width</label>
+          <label className="text-xs text-muted-foreground font-medium mb-2 block">
+            {locale === 'tr' ? 'Genislik' : 'Width'}
+          </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -183,22 +191,24 @@ export default function FilterBar() {
               defaultValue={minWidth}
               onBlur={(e) => updateParams({ minWidth: e.target.value || null })}
               placeholder="Min"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
-            <span className="text-xs text-slate-400">–</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <input
               type="number"
               min={minWidth}
               defaultValue={maxWidth}
               onBlur={(e) => updateParams({ maxWidth: e.target.value || null })}
               placeholder="Max"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="text-xs text-slate-500 font-medium mb-2 block">Height</label>
+          <label className="text-xs text-muted-foreground font-medium mb-2 block">
+            {locale === 'tr' ? 'Yukseklik' : 'Height'}
+          </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -207,22 +217,24 @@ export default function FilterBar() {
               defaultValue={minHeight}
               onBlur={(e) => updateParams({ minHeight: e.target.value || null })}
               placeholder="Min"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
-            <span className="text-xs text-slate-400">–</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <input
               type="number"
               min={minHeight}
               defaultValue={maxHeight}
               onBlur={(e) => updateParams({ maxHeight: e.target.value || null })}
               placeholder="Max"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 font-medium mb-2 block">Depth</label>
+          <label className="text-xs text-muted-foreground font-medium mb-2 block">
+            {locale === 'tr' ? 'Derinlik' : 'Depth'}
+          </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -231,16 +243,16 @@ export default function FilterBar() {
               defaultValue={minDepth}
               onBlur={(e) => updateParams({ minDepth: e.target.value || null })}
               placeholder="Min"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
-            <span className="text-xs text-slate-400">–</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <input
               type="number"
               min={minDepth}
               defaultValue={maxDepth}
               onBlur={(e) => updateParams({ maxDepth: e.target.value || null })}
               placeholder="Max"
-              className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#1A1A1A] transition"
+              className="flex-1 px-3 py-2 text-xs border border-border bg-background rounded-lg focus:outline-none focus:border-foreground transition"
             />
           </div>
         </div>
