@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WEST WING - Inventory</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#464747",
+                    "outline": "#8e9192",
+                    "on-surface": "#e5e2e1",
+                    "inverse-on-surface": "#313030",
+                    "tertiary-fixed": "#e4e2e1",
+                    "on-tertiary": "#303030",
+                    "surface-container-high": "#2a2a2a",
+                    "primary": "#ffffff",
+                    "surface-variant": "#353534",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed": "#1a1c1c",
+                    "tertiary-fixed-dim": "#c8c6c5",
+                    "error-container": "#93000a",
+                    "tertiary": "#ffffff",
+                    "secondary-container": "#464747",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-dim": "#131313",
+                    "on-primary": "#2f3131",
+                    "inverse-primary": "#5d5f5f",
+                    "error": "#ffb4ab",
+                    "background": "#131313",
+                    "on-error": "#690005",
+                    "tertiary-container": "#e4e2e1",
+                    "on-background": "#e5e2e1",
+                    "on-primary-fixed-variant": "#454747",
+                    "on-secondary-container": "#b5b5b5",
+                    "on-tertiary-fixed-variant": "#474746",
+                    "on-secondary": "#2f3031",
+                    "surface": "#131313",
+                    "surface-bright": "#393939",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed-dim": "#c7c6c6",
+                    "secondary": "#c7c6c6",
+                    "primary-fixed-dim": "#c6c6c7",
+                    "on-surface-variant": "#c4c7c8",
+                    "on-tertiary-fixed": "#1b1c1c",
+                    "surface-container": "#201f1f",
+                    "on-primary-container": "#636565",
+                    "surface-tint": "#c6c6c7",
+                    "on-tertiary-container": "#656464",
+                    "on-error-container": "#ffdad6",
+                    "primary-fixed": "#e2e2e2",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "surface-container-low": "#1c1b1b",
+                    "primary-container": "#e2e2e2",
+                    "secondary-fixed": "#e3e2e2",
+                    "outline-variant": "#444748"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter-mobile": "16px",
+                    "margin-edge": "40px",
+                    "container-max": "1440px",
+                    "touch-target": "48px",
+                    "gutter-desktop": "32px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Inter", "sans-serif"],
+                    "button-lg": ["Inter", "sans-serif"],
+                    "headline-md": ["Inter", "sans-serif"],
+                    "body-lg": ["Inter", "sans-serif"],
+                    "headline-xl": ["Inter", "sans-serif"],
+                    "headline-lg": ["Inter", "sans-serif"],
+                    "body-md": ["Inter", "sans-serif"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600" }],
+                    "button-lg": ["14px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                    "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "headline-xl": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+                    "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom scrollbar for minimalist look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: #444748; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md text-body-md antialiased overflow-hidden flex h-screen">
+<!-- SideNavBar (Desktop) -->
+<nav class="fixed left-0 top-0 h-full flex-col pt-8 bg-zinc-950 text-white font-inter text-sm uppercase tracking-widest border-r w-64 hidden md:flex border-r border-zinc-800 z-50">
+<div class="px-6 mb-8 text-xl font-bold tracking-tighter text-white">
+<div>WEST WING</div>
+<div class="text-xs text-zinc-500 tracking-widest mt-1">ADMIN ATELIER</div>
+</div>
+<div class="flex-1 flex flex-col gap-2 w-full mt-8">
+<a class="flex items-center gap-4 px-6 py-4 text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all duration-150 cursor-pointer active:opacity-90 w-full" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all duration-150 cursor-pointer active:opacity-90 w-full" href="#">
+<span class="material-symbols-outlined" data-icon="view_kanban">view_kanban</span>
+<span>Kanban</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-4 px-6 py-4 bg-white text-black font-bold cursor-pointer active:opacity-90 w-full" href="#">
+<span class="material-symbols-outlined material-fill" data-icon="inventory_2" data-weight="fill">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex items-center gap-4 px-6 py-4 text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all duration-150 cursor-pointer active:opacity-90 w-full" href="#">
+<span class="material-symbols-outlined" data-icon="calculate">calculate</span>
+<span>Calculator</span>
+</a>
+</div>
+<div class="mt-auto pb-8">
+<a class="flex items-center gap-4 px-6 py-4 text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all duration-150 cursor-pointer active:opacity-90 w-full" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full w-full md:ml-64 relative">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 py-4 h-16 bg-zinc-950 text-white font-inter uppercase tracking-widest text-xs border-b border-zinc-800 z-40 sticky top-0 md:hidden">
+<div class="text-lg font-black tracking-tighter text-white">
+                WEST WING
+            </div>
+<div class="flex items-center gap-4">
+<button class="text-zinc-500 hover:text-white transition-colors duration-200 active:scale-95 cursor-pointer flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-zinc-500 hover:text-white transition-colors duration-200 active:scale-95 cursor-pointer flex items-center justify-center min-h-[48px] min-w-[48px]">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<div class="flex-1 overflow-y-auto w-full max-w-[1440px] mx-auto p-gutter-mobile md:p-gutter-desktop pb-32 md:pb-gutter-desktop">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-primary mb-2">STOCK CONTROL</h1>
+<p class="font-body-lg text-body-lg text-outline max-w-2xl">Real-time monitoring of raw materials, plywood stocks, and atelier consumables. Alert states require immediate procurement action.</p>
+</div>
+<div class="flex items-center gap-4">
+<button class="border border-primary text-primary bg-transparent font-button-lg text-button-lg px-8 h-touch-target flex items-center justify-center uppercase tracking-widest hover:bg-surface-container-high transition-colors">
+                        EXPORT LOG
+                    </button>
+<button class="bg-primary text-on-primary font-button-lg text-button-lg px-8 h-touch-target flex items-center justify-center uppercase tracking-widest hover:bg-zinc-200 transition-colors">
+                        RECEIVE STOCK
+                    </button>
+</div>
+</div>
+<!-- Bento Status Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+<!-- Status Card 1 -->
+<div class="border border-surface-container-high p-8 flex flex-col justify-between min-h-[160px] bg-surface">
+<div class="font-label-caps text-label-caps text-outline uppercase">Total SKUs Tracked</div>
+<div class="font-headline-xl text-headline-xl text-primary mt-4">1,402</div>
+</div>
+<!-- Status Card 2 (Alert State) -->
+<div class="border border-surface-container-high p-8 flex flex-col justify-between min-h-[160px] bg-surface relative overflow-hidden group cursor-pointer hover:border-primary transition-colors">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-5 transition-opacity"></div>
+<div class="font-label-caps text-label-caps text-outline uppercase flex items-center justify-between">
+<span>Critical Deficits</span>
+<span class="material-symbols-outlined text-primary text-sm">warning</span>
+</div>
+<div class="font-headline-xl text-headline-xl text-primary mt-4">03</div>
+</div>
+<!-- Status Card 3 -->
+<div class="border border-surface-container-high p-8 flex flex-col justify-between min-h-[160px] bg-surface">
+<div class="font-label-caps text-label-caps text-outline uppercase">Inbound Deliveries</div>
+<div class="font-headline-xl text-headline-xl text-primary mt-4">12</div>
+</div>
+</div>
+<!-- Controls Area -->
+<div class="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 border-b border-surface-container-high pb-8">
+<div class="relative w-full md:w-96">
+<span class="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-transparent border-0 border-b border-outline text-primary font-label-caps text-label-caps pl-8 pr-4 py-3 h-touch-target focus:ring-0 focus:border-primary transition-colors placeholder:text-surface-container-highest" placeholder="SEARCH INVENTORY..." type="text"/>
+</div>
+<div class="flex gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+<button class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-2 px-2 whitespace-nowrap">ALL MATERIALS</button>
+<button class="font-label-caps text-label-caps text-outline border-b-2 border-transparent pb-2 px-2 hover:text-primary whitespace-nowrap">WOOD STOCK</button>
+<button class="font-label-caps text-label-caps text-outline border-b-2 border-transparent pb-2 px-2 hover:text-primary whitespace-nowrap">LAMINATES</button>
+<button class="font-label-caps text-label-caps text-outline border-b-2 border-transparent pb-2 px-2 hover:text-primary whitespace-nowrap">CONSUMABLES</button>
+</div>
+</div>
+<!-- Inventory Blueprint List -->
+<div class="w-full">
+<!-- Header Row -->
+<div class="hidden md:grid grid-cols-12 gap-6 p-4 border-b border-surface-container-high font-label-caps text-label-caps text-outline uppercase">
+<div class="col-span-1">ID</div>
+<div class="col-span-4">MATERIAL SPECIFICATION</div>
+<div class="col-span-2">CATEGORY</div>
+<div class="col-span-2">QTY (UNITS)</div>
+<div class="col-span-2">STATUS</div>
+<div class="col-span-1 text-right">ACTION</div>
+</div>
+<!-- List Item 1 : Normal -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-6 md:p-4 border-b border-surface-container-high items-center min-h-[80px] hover:bg-[#1A1A1A] transition-colors group">
+<div class="md:col-span-1 font-label-caps text-label-caps text-outline hidden md:block">#SKU-892</div>
+<div class="md:col-span-4 flex flex-col">
+<span class="font-body-lg text-body-lg text-primary truncate">Walnut Veneer - A Grade</span>
+<span class="font-label-caps text-label-caps text-outline mt-1 md:hidden">#SKU-892 • WOOD STOCK</span>
+</div>
+<div class="md:col-span-2 font-label-caps text-label-caps text-outline hidden md:block">WOOD STOCK</div>
+<div class="md:col-span-2 font-body-md text-body-md text-primary">145 Sheets</div>
+<div class="md:col-span-2">
+<span class="font-label-caps text-label-caps text-outline border border-surface-container-high px-3 py-1 inline-block">NOMINAL</span>
+</div>
+<div class="md:col-span-1 flex justify-end">
+<button class="h-touch-target w-touch-target flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- List Item 2 : Alert State -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-6 md:p-4 border-b border-surface-container-high items-center min-h-[80px] hover:bg-[#1A1A1A] transition-colors group relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="md:col-span-1 font-label-caps text-label-caps text-outline hidden md:block pl-3">#SKU-204</div>
+<div class="md:col-span-4 flex flex-col pl-0 md:pl-3">
+<span class="font-body-lg text-body-lg text-primary truncate">Matte Black Laminate 0.8mm</span>
+<span class="font-label-caps text-label-caps text-outline mt-1 md:hidden">#SKU-204 • LAMINATES</span>
+</div>
+<div class="md:col-span-2 font-label-caps text-label-caps text-outline hidden md:block">LAMINATES</div>
+<div class="md:col-span-2 font-body-md text-body-md text-primary">12 Rolls</div>
+<div class="md:col-span-2">
+<!-- High Contrast Indicator -->
+<span class="font-label-caps text-label-caps bg-primary text-on-primary px-3 py-1 inline-block font-bold">LOW STOCK</span>
+</div>
+<div class="md:col-span-1 flex justify-end">
+<button class="h-touch-target w-touch-target flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- List Item 3 : Normal -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-6 md:p-4 border-b border-surface-container-high items-center min-h-[80px] hover:bg-[#1A1A1A] transition-colors group">
+<div class="md:col-span-1 font-label-caps text-label-caps text-outline hidden md:block">#SKU-019</div>
+<div class="md:col-span-4 flex flex-col">
+<span class="font-body-lg text-body-lg text-primary truncate">Birch Plywood 18mm</span>
+<span class="font-label-caps text-label-caps text-outline mt-1 md:hidden">#SKU-019 • WOOD STOCK</span>
+</div>
+<div class="md:col-span-2 font-label-caps text-label-caps text-outline hidden md:block">WOOD STOCK</div>
+<div class="md:col-span-2 font-body-md text-body-md text-primary">85 Boards</div>
+<div class="md:col-span-2">
+<span class="font-label-caps text-label-caps text-outline border border-surface-container-high px-3 py-1 inline-block">NOMINAL</span>
+</div>
+<div class="md:col-span-1 flex justify-end">
+<button class="h-touch-target w-touch-target flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- List Item 4 : Alert State -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-6 md:p-4 border-b border-surface-container-high items-center min-h-[80px] hover:bg-[#1A1A1A] transition-colors group relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="md:col-span-1 font-label-caps text-label-caps text-outline hidden md:block pl-3">#SKU-992</div>
+<div class="md:col-span-4 flex flex-col pl-0 md:pl-3">
+<span class="font-body-lg text-body-lg text-primary truncate">Heavy Duty Packaging Tape</span>
+<span class="font-label-caps text-label-caps text-outline mt-1 md:hidden">#SKU-992 • CONSUMABLES</span>
+</div>
+<div class="md:col-span-2 font-label-caps text-label-caps text-outline hidden md:block">CONSUMABLES</div>
+<div class="md:col-span-2 font-body-md text-body-md text-primary">05 Boxes</div>
+<div class="md:col-span-2">
+<!-- High Contrast Indicator -->
+<span class="font-label-caps text-label-caps bg-primary text-on-primary px-3 py-1 inline-block font-bold">CRITICAL</span>
+</div>
+<div class="md:col-span-1 flex justify-end">
+<button class="h-touch-target w-touch-target flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center bg-zinc-950 h-20 md:hidden z-50 border-t border-zinc-800 font-inter text-[10px] uppercase tracking-widest font-medium">
+<a class="flex flex-col items-center justify-center text-zinc-600 pt-2 pb-4 hover:text-zinc-300 w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="view_kanban">view_kanban</span>
+<span>Board</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-600 pt-2 pb-4 hover:text-zinc-300 w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="receipt_long">receipt_long</span>
+<span>Orders</span>
+</a>
+<!-- Active Tab -->
+<a class="flex flex-col items-center justify-center text-white border-t-2 border-white pt-2 pb-4 active:bg-zinc-900 transition-none w-full h-full -mt-[2px]" href="#">
+<span class="material-symbols-outlined mb-1 material-fill" data-icon="inventory_2" data-weight="fill">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-600 pt-2 pb-4 hover:text-zinc-300 w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="calculate">calculate</span>
+<span>Calc</span>
+</a>
+</nav>
+</body></html>
