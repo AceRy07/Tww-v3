@@ -6,6 +6,7 @@ import { ArrowLeft, Layers, Ruler, Tag } from "lucide-react";
 import InquiryForm from "@/components/forms/InquiryForm";
 import { getProductBySlug, products } from "@/lib/data";
 import { hasLocale, locales } from "@/i18n/config";
+import { redirect } from "next/navigation";
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductRedirectPage({ params }: Props) {
   const { lang, slug } = await params;
 
   if (!hasLocale(lang)) {
