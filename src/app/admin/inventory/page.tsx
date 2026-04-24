@@ -1,11 +1,97 @@
 import Image from 'next/image';
-import { and, desc, eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { AlertTriangle, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { db } from '@/lib/db';
-import { products, productTranslations } from '@/lib/db/schema';
+import { z } from 'zod';
+import { createInventoryProduct, getInventoryItems } from '@/lib/data';
+import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
+
 export const dynamic = "force-dynamic"; // Bu sayfanın statik olarak build edilmesini engeller
 
 const LOW_STOCK_THRESHOLD = 12;
+
+const createProductSchema = z.object({
+  sku: z.string().trim().min(3).max(64),
+  slug: z
+    .string()
+    .trim()
+    .min(3)
+    .max(160)
+    .regex(/^[a-z0-9-]+$/),
+  category: z.enum(CATEGORY_VALUES),
+  price: z.coerce.number().positive(),
+  stock: z.coerce.number().int().min(0),
+  color: z.enum(COLOR_VALUES),
+  colorHex: z.string().trim().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
+  width: z.coerce.number().positive(),
+  height: z.coerce.number().positive(),
+  depth: z.coerce.number().positive(),
+  images: z.array(z.string().url()).min(1),
+  featured: z.boolean(),
+  nameTr: z.string().trim().min(2),
+  materialTr: z.string().trim().min(2),
+  descriptionTr: z.string().trim().min(10),
+  nameEn: z.string().trim().min(2),
+  materialEn: z.string().trim().min(2),
+  descriptionEn: z.string().trim().min(10),
+});
+
+async function createProductAction(formData: FormData) {
+  'use server';
+
+  try {
+    const raw = Object.fromEntries(formData.entries());
+    const imageList = String(raw.images ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const parsed = createProductSchema.safeParse({
+      ...raw,
+      images: imageList,
+      featured: formData.get('featured') === 'on',
+    });
+
+    if (!parsed.success) {
+      console.error('[admin/inventory] Invalid new product payload:', parsed.error.flatten());
+      return;
+    }
+
+    const values = parsed.data;
+
+    await createInventoryProduct({
+      sku: values.sku,
+      slug: values.slug,
+      category: values.category,
+      price: values.price,
+      stock: values.stock,
+      color: values.color,
+      colorHex: values.colorHex,
+      dimensions: {
+        width: values.width,
+        height: values.height,
+        depth: values.depth,
+      },
+      images: values.images,
+      featured: values.featured,
+      translations: {
+        tr: {
+          name: values.nameTr,
+          material: values.materialTr,
+          description: values.descriptionTr,
+        },
+        en: {
+          name: values.nameEn,
+          material: values.materialEn,
+          description: values.descriptionEn,
+        },
+      },
+    });
+
+    revalidatePath('/admin/inventory');
+  } catch (error) {
+    console.error('[admin/inventory] Failed to create product:', error);
+  }
+}
 
 function toLabelCase(value: string): string {
   return value
@@ -23,24 +109,7 @@ function formatPrice(price: number): string {
 }
 
 export default async function AdminInventoryPage() {
-  const inventoryItems = await db
-    .select({
-      id: products.id,
-      sku: products.sku,
-      price: products.price,
-      stock: products.stock,
-      category: products.category,
-      slug: products.slug,
-      images: products.images,
-      title: productTranslations.name,
-      description: productTranslations.description,
-    })
-    .from(products)
-    .leftJoin(
-      productTranslations,
-      and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, 'tr'))
-    )
-    .orderBy(desc(products.createdAt));
+  const inventoryItems = await getInventoryItems('tr');
 
   const totalInventory = inventoryItems.reduce((sum, item) => sum + item.stock, 0);
   const criticalDeficits = inventoryItems.filter((item) => item.stock <= LOW_STOCK_THRESHOLD).length;
@@ -70,13 +139,64 @@ export default async function AdminInventoryPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex min-h-12 min-w-12 items-center justify-center gap-2 border border-white bg-white px-5 text-xs font-semibold uppercase tracking-[0.1em] text-black"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          New Product
-        </button>
+        <details className="w-full max-w-[720px] border border-[#2a2a2a] bg-[#191919] p-4 md:w-auto md:min-w-[560px]">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New Product
+          </summary>
+
+          <form action={createProductAction} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input name="sku" placeholder="SKU (TWW-XX-001)" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="slug" placeholder="slug-example" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+
+            <select name="category" className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white" defaultValue="dining-tables">
+              {CATEGORY_VALUES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <select name="color" className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white" defaultValue="Anthracite">
+              {COLOR_VALUES.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
+
+            <input name="price" type="number" step="0.01" min="0" placeholder="Price" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="stock" type="number" min="0" placeholder="Stock" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="colorHex" placeholder="#383838" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="images" placeholder="https://..., https://..." className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+
+            <input name="width" type="number" min="1" placeholder="Width" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="height" type="number" min="1" placeholder="Height" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="depth" type="number" min="1" placeholder="Depth" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white md:col-span-2" required />
+
+            <input name="nameTr" placeholder="TR Name" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="materialTr" placeholder="TR Material" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <textarea name="descriptionTr" placeholder="TR Description" className="min-h-20 border border-[#2a2a2a] bg-transparent px-3 py-2 text-sm text-white md:col-span-2" required />
+
+            <input name="nameEn" placeholder="EN Name" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <input name="materialEn" placeholder="EN Material" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+            <textarea name="descriptionEn" placeholder="EN Description" className="min-h-20 border border-[#2a2a2a] bg-transparent px-3 py-2 text-sm text-white md:col-span-2" required />
+
+            <label className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#8e8e8e]">
+              <input type="checkbox" name="featured" className="h-4 w-4" />
+              Featured product
+            </label>
+
+            <div className="md:col-span-2">
+              <button
+                type="submit"
+                className="inline-flex min-h-10 items-center justify-center border border-white bg-white px-5 text-xs font-semibold uppercase tracking-[0.1em] text-black"
+              >
+                Save Product
+              </button>
+            </div>
+          </form>
+        </details>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -132,7 +252,13 @@ export default async function AdminInventoryPage() {
                 className="grid min-h-16 grid-cols-1 gap-4 border-b border-[#2a2a2a] px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container md:grid-cols-[96px_1.5fr_140px_180px_130px_96px] md:items-center md:gap-4 md:px-6"
               >
                 <div className="relative h-16 w-16 overflow-hidden border border-[#2a2a2a]">
-                  <Image src={item.images[0]} alt={title} fill sizes="64px" className="object-cover" />
+                  {item.images[0] ? (
+                    <Image src={item.images[0]} alt={title} fill sizes="64px" className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[#1a1a1a] text-[10px] uppercase tracking-[0.08em] text-[#8e8e8e]">
+                      No Img
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -142,7 +268,7 @@ export default async function AdminInventoryPage() {
 
                 <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{toLabelCase(item.category)}</p>
 
-                <p className="text-sm font-medium text-white">{formatPrice(Number(item.price))}</p>
+                <p className="text-sm font-medium text-white">{formatPrice(item.price)}</p>
 
                 <div>
                   {isLowStock ? (

@@ -56,7 +56,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   const minDepth = Number(queryParams.minDepth ?? 0);
   const maxDepth = Number(queryParams.maxDepth ?? Infinity);
 
-  const products = getProducts(lang);
+  const products = await getProducts(lang);
   const filtered = products.filter((p) => {
     if (
       query &&

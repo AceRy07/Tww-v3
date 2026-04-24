@@ -1,8 +1,8 @@
 import 'dotenv/config';
 
 import { db } from '@/lib/db';
-import { products, productTranslations } from '@/lib/db/schema';
-import { rawProducts } from '@/lib/data';
+import { products, productTranslations } from '@/db/schema';
+import { rawProducts } from '@/lib/db/seed-data';
 
 const stockBySku: Record<string, number> = {
   'TWW-DT-001': 24,
@@ -21,23 +21,29 @@ async function seed() {
       .insert(products)
       .values({
         sku: product.sku,
+        slug: product.slug,
+        category: product.category,
         price: product.price.toString(),
         stock: stockBySku[product.sku] ?? 0,
-        category: product.category,
+        color: product.color,
+        colorHex: product.colorHex,
         dimensions: product.dimensions,
         images: product.images,
-        slug: product.slug,
+        featured: product.featured,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: products.sku,
         set: {
+          slug: product.slug,
+          category: product.category,
           price: product.price.toString(),
           stock: stockBySku[product.sku] ?? 0,
-          category: product.category,
+          color: product.color,
+          colorHex: product.colorHex,
           dimensions: product.dimensions,
           images: product.images,
-          slug: product.slug,
+          featured: product.featured,
           updatedAt: new Date(),
         },
       })
@@ -49,12 +55,14 @@ async function seed() {
         productId: savedProduct.id,
         languageCode: 'tr',
         name: product.title,
+        material: product.material.tr,
         description: product.description.tr,
       })
       .onConflictDoUpdate({
         target: [productTranslations.productId, productTranslations.languageCode],
         set: {
           name: product.title,
+          material: product.material.tr,
           description: product.description.tr,
         },
       });
@@ -65,12 +73,14 @@ async function seed() {
         productId: savedProduct.id,
         languageCode: 'en',
         name: product.title,
+        material: product.material.en,
         description: product.description.en,
       })
       .onConflictDoUpdate({
         target: [productTranslations.productId, productTranslations.languageCode],
         set: {
           name: product.title,
+          material: product.material.en,
           description: product.description.en,
         },
       });

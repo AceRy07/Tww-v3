@@ -14,7 +14,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
     notFound();
   }
 
-  const featured = getFeaturedProducts(lang);
+  const featured = await getFeaturedProducts(lang);
 
   return (
     <>

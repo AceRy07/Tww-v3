@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Layers, Ruler, Tag } from "lucide-react";
 import InquiryForm from "@/components/forms/InquiryForm";
-import { getProductBySlug, products } from "@/lib/data";
+import { getAllProductSlugs, getProductBySlug } from "@/lib/data";
 import { hasLocale, locales } from "@/i18n/config";
 import { redirect } from "next/navigation";
 
@@ -13,7 +13,8 @@ interface Props {
 }
 
 export async function generateStaticParams() {
-  return locales.flatMap((lang) => products.map((p) => ({ lang, slug: p.slug })));
+  const slugs = await getAllProductSlugs();
+  return locales.flatMap((lang) => slugs.map((slug) => ({ lang, slug })));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {};
   }
 
-  const product = getProductBySlug(slug, lang);
+  const product = await getProductBySlug(slug, lang);
   if (!product) return {};
 
   return {
@@ -39,7 +40,7 @@ export default async function ProductRedirectPage({ params }: Props) {
     notFound();
   }
 
-  const product = getProductBySlug(slug, lang);
+  const product = await getProductBySlug(slug, lang);
   if (!product) notFound();
 
   return (

@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { COLORS, getCategoryOptions, type CategoryKey, type Color } from '@/lib/data';
+import { COLORS, getCategoryOptions, type CategoryKey, type Color } from '@/lib/product-config';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
