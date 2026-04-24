@@ -1,25 +1,8 @@
-'use client';
-
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { and, desc, eq } from 'drizzle-orm';
 import { AlertTriangle, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { rawProducts, type ProductRecord } from '@/lib/data';
-
-type InventoryEntry = ProductRecord & {
-  stockUnits: number;
-  inbound: boolean;
-};
-
-const inventoryBySku: Record<string, { stockUnits: number; inbound: boolean }> = {
-  'TWW-DT-001': { stockUnits: 24, inbound: false },
-  'TWW-CT-001': { stockUnits: 12, inbound: true },
-  'TWW-ST-001': { stockUnits: 8, inbound: false },
-  'TWW-SH-001': { stockUnits: 31, inbound: true },
-  'TWW-SIT-001': { stockUnits: 6, inbound: false },
-  'TWW-DK-001': { stockUnits: 18, inbound: true },
-  'TWW-CT-002': { stockUnits: 9, inbound: false },
-  'TWW-DT-002': { stockUnits: 14, inbound: true },
-};
+import { db } from '@/lib/db';
+import { products, productTranslations } from '@/lib/db/schema';
 
 const LOW_STOCK_THRESHOLD = 12;
 
@@ -38,41 +21,29 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-export default function AdminInventoryPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+export default async function AdminInventoryPage() {
+  const inventoryItems = await db
+    .select({
+      id: products.id,
+      sku: products.sku,
+      price: products.price,
+      stock: products.stock,
+      category: products.category,
+      slug: products.slug,
+      images: products.images,
+      title: productTranslations.name,
+      description: productTranslations.description,
+    })
+    .from(products)
+    .leftJoin(
+      productTranslations,
+      and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, 'tr'))
+    )
+    .orderBy(desc(products.createdAt));
 
-  const inventoryItems = useMemo<InventoryEntry[]>(
-    () =>
-      rawProducts.map((product) => ({
-        ...product,
-        stockUnits: inventoryBySku[product.sku]?.stockUnits ?? 0,
-        inbound: inventoryBySku[product.sku]?.inbound ?? false,
-      })),
-    []
-  );
-
-  const filteredItems = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return inventoryItems;
-    }
-
-    return inventoryItems.filter((item) => {
-      const categoryLabel = toLabelCase(item.category);
-      return [item.title, item.sku, categoryLabel].some((field) => field.toLowerCase().includes(query));
-    });
-  }, [inventoryItems, searchQuery]);
-
-  const totalInventory = useMemo(() => inventoryItems.reduce((sum, item) => sum + item.stockUnits, 0), [inventoryItems]);
-  const criticalDeficits = useMemo(
-    () => inventoryItems.filter((item) => item.stockUnits <= LOW_STOCK_THRESHOLD).length,
-    [inventoryItems]
-  );
-  const inboundDeliveries = useMemo(
-    () => inventoryItems.filter((item) => item.inbound).length,
-    [inventoryItems]
-  );
+  const totalInventory = inventoryItems.reduce((sum, item) => sum + item.stock, 0);
+  const criticalDeficits = inventoryItems.filter((item) => item.stock <= LOW_STOCK_THRESHOLD).length;
+  const inboundDeliveries = inventoryItems.filter((item) => item.stock === 0).length;
 
   return (
     <section className="mx-auto w-full max-w-[1440px] border border-[#2a2a2a] bg-[#131313] p-5 md:p-8">
@@ -91,8 +62,6 @@ export default function AdminInventoryPage() {
               <input
                 id="inventory-search"
                 type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search inventory"
                 className="h-12 w-full bg-transparent text-sm text-white placeholder:text-[#8e8e8e] outline-none"
               />
@@ -152,8 +121,9 @@ export default function AdminInventoryPage() {
         </div>
 
         <div>
-          {filteredItems.map((item) => {
-            const isLowStock = item.stockUnits <= LOW_STOCK_THRESHOLD;
+          {inventoryItems.map((item) => {
+            const isLowStock = item.stock <= LOW_STOCK_THRESHOLD;
+            const title = item.title ?? item.slug;
 
             return (
               <article
@@ -161,17 +131,17 @@ export default function AdminInventoryPage() {
                 className="grid min-h-16 grid-cols-1 gap-4 border-b border-[#2a2a2a] px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container md:grid-cols-[96px_1.5fr_140px_180px_130px_96px] md:items-center md:gap-4 md:px-6"
               >
                 <div className="relative h-16 w-16 overflow-hidden border border-[#2a2a2a]">
-                  <Image src={item.images[0]} alt={item.title} fill sizes="64px" className="object-cover" />
+                  <Image src={item.images[0]} alt={title} fill sizes="64px" className="object-cover" />
                 </div>
 
                 <div>
-                  <p className="text-base font-medium text-white">{item.title}</p>
+                  <p className="text-base font-medium text-white">{title}</p>
                   <p className="mt-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{item.sku}</p>
                 </div>
 
                 <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{toLabelCase(item.category)}</p>
 
-                <p className="text-sm font-medium text-white">{formatPrice(item.price)}</p>
+                <p className="text-sm font-medium text-white">{formatPrice(Number(item.price))}</p>
 
                 <div>
                   {isLowStock ? (
@@ -189,7 +159,7 @@ export default function AdminInventoryPage() {
                   <button
                     type="button"
                     className="inline-flex min-h-12 min-w-12 items-center justify-center border border-transparent text-[#8e8e8e] transition-colors hover:border-[#2a2a2a] hover:text-white"
-                    aria-label={`More actions for ${item.title}`}
+                    aria-label={`More actions for ${title}`}
                   >
                     <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -199,7 +169,7 @@ export default function AdminInventoryPage() {
           })}
         </div>
 
-        {filteredItems.length === 0 ? (
+        {inventoryItems.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-[#8e8e8e]">No products match your search.</div>
         ) : null}
       </div>
