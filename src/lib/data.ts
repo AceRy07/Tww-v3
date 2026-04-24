@@ -12,7 +12,7 @@ export type Color = "Anthracite" | "Natural Oak" | "Matte Black" | "White" | "Wa
 
 type LocalizedText = Record<Locale, string>;
 
-type ProductRecord = {
+export type ProductRecord = {
   id: string;
   slug: string;
   sku: string;
@@ -47,7 +47,7 @@ const categoryLabels: Record<CategoryKey, LocalizedText> = {
   desks: { en: "Desks", tr: "Calisma Masalari" },
 };
 
-const rawProducts: ProductRecord[] = [
+export const rawProducts: ProductRecord[] = [
   {
     id: "1",
     slug: "arc-dining-table",

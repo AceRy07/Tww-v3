@@ -128,3 +128,13 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .bg-surface-container {
+    background-color: #201f1f;
+  }
+
+  .hover\:bg-surface-container:hover {
+    background-color: #201f1f;
+  }
+}
