@@ -7,7 +7,7 @@ import { hasLocale } from "@/i18n/config";
 import ScrollReveal from "@/components/layout/ScrollReveal";
 import ProductCard from "@/components/catalog/ProductCard";
 
-export default async function HomePage({ params }: PageProps<"/[lang]">) {
+export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
 
   if (!hasLocale(lang)) {

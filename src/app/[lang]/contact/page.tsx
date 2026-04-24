@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Get in touch with The West Wing team.",
 };
 
-export default async function ContactPage({ params }: PageProps<"/[lang]/contact">) {
+export default async function ContactPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
 
   if (!hasLocale(lang)) {
