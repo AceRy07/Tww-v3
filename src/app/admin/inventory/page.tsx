@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { AlertTriangle, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { db } from '@/lib/db';
 import { products, productTranslations } from '@/lib/db/schema';
+export const dynamic = "force-dynamic"; // Bu sayfanın statik olarak build edilmesini engeller
 
 const LOW_STOCK_THRESHOLD = 12;
 
