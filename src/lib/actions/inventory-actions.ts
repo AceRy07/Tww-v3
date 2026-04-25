@@ -69,8 +69,14 @@ export async function updateInventoryProductAction(productId: string, formData: 
   redirect('/admin/inventory');
 }
 
-export async function deleteInventoryProductAction(productId: string, formData: FormData) {
-  void formData;
+export async function deleteInventoryProductAction(formData: FormData) {
+  const productIdValue = formData.get('productId');
+  const productId = typeof productIdValue === 'string' ? productIdValue : '';
+
+  if (!productId) {
+    throw new Error('Silinecek urun kimligi bulunamadi.');
+  }
+
   await deleteInventoryProduct(productId);
   revalidatePath('/admin/inventory');
 }

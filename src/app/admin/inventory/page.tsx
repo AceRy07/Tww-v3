@@ -1,28 +1,12 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { AlertTriangle, Plus, Search } from 'lucide-react';
-import { createInventoryProductAction, deleteInventoryProductAction } from '@/lib/actions/inventory-actions';
+import { AlertTriangle, Plus } from 'lucide-react';
+import { createInventoryProductAction } from '@/lib/actions/inventory-actions';
+import InventoryTableClient from '@/components/admin/InventoryTableClient';
 import { getInventoryItems } from '@/lib/data';
 import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
 
 export const dynamic = "force-dynamic"; // Bu sayfanın statik olarak build edilmesini engeller
 
 const LOW_STOCK_THRESHOLD = 12;
-
-function toLabelCase(value: string): string {
-  return value
-    .split('-')
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(' ');
-}
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price);
-}
 
 export default async function AdminInventoryPage() {
   const inventoryItems = await getInventoryItems('tr');
@@ -38,21 +22,6 @@ export default async function AdminInventoryPage() {
           <h1 className="font-[Inter,sans-serif] text-[24px] font-medium leading-[1.3] text-white">
             Inventory &amp; Stock Control
           </h1>
-
-          <div className="w-full max-w-md border-b border-[#8e8e8e] px-2 focus-within:border focus-within:border-white">
-            <label htmlFor="inventory-search" className="sr-only">
-              Search inventory
-            </label>
-            <div className="flex min-h-12 items-center gap-2">
-              <Search className="h-4 w-4 shrink-0 text-[#8e8e8e]" aria-hidden="true" />
-              <input
-                id="inventory-search"
-                type="search"
-                placeholder="Search inventory"
-                className="h-12 w-full bg-transparent text-sm text-white placeholder:text-[#8e8e8e] outline-none"
-              />
-            </div>
-          </div>
         </div>
 
         <details className="w-full max-w-[720px] border border-[#2a2a2a] bg-[#191919] p-4 md:w-auto md:min-w-[560px]">
@@ -147,83 +116,7 @@ export default async function AdminInventoryPage() {
         </article>
       </div>
 
-      <div className="overflow-hidden border border-[#2a2a2a]">
-        <div className="hidden min-h-12 grid-cols-[96px_1.5fr_140px_180px_130px_96px] items-center gap-4 border-b border-[#2a2a2a] px-6 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e] md:grid">
-          <span>Image</span>
-          <span>Title / SKU</span>
-          <span>Category</span>
-          <span>Price</span>
-          <span>Status</span>
-          <span className="text-right">Action</span>
-        </div>
-
-        <div>
-          {inventoryItems.map((item) => {
-            const isLowStock = item.stock <= LOW_STOCK_THRESHOLD;
-            const title = item.title ?? item.slug;
-
-            return (
-              <article
-                key={item.id}
-                className="grid min-h-16 grid-cols-1 gap-4 border-b border-[#2a2a2a] px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container md:grid-cols-[96px_1.5fr_140px_180px_130px_96px] md:items-center md:gap-4 md:px-6"
-              >
-                <div className="relative h-16 w-16 overflow-hidden border border-[#2a2a2a]">
-                  {item.images[0] ? (
-                    <Image src={item.images[0]} alt={title} fill sizes="64px" className="object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[#1a1a1a] text-[10px] uppercase tracking-[0.08em] text-[#8e8e8e]">
-                      No Img
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-base font-medium text-white">{title}</p>
-                  <p className="mt-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{item.sku}</p>
-                </div>
-
-                <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{toLabelCase(item.category)}</p>
-
-                <p className="text-sm font-medium text-white">{formatPrice(item.price)}</p>
-
-                <div>
-                  {isLowStock ? (
-                    <span className="inline-flex min-h-8 items-center bg-white px-3 text-[12px] font-bold uppercase tracking-[0.1em] text-black">
-                      Low Stock
-                    </span>
-                  ) : (
-                    <span className="inline-flex min-h-8 items-center border border-[#2a2a2a] px-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">
-                      Stable
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-end gap-2">
-                  <Link
-                    href={`/admin/inventory/${item.id}/edit`}
-                    className="inline-flex min-h-9 items-center justify-center border border-[#2a2a2a] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#d3d3d3] transition-colors hover:border-white hover:text-white"
-                  >
-                    Edit
-                  </Link>
-
-                  <form action={deleteInventoryProductAction.bind(null, item.id)}>
-                    <button
-                      type="submit"
-                      className="inline-flex min-h-9 items-center justify-center border border-[#3b2929] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0c2c2] transition-colors hover:border-[#f0c2c2] hover:text-white"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {inventoryItems.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-[#8e8e8e]">No products match your search.</div>
-        ) : null}
-      </div>
+      <InventoryTableClient inventoryItems={inventoryItems} lowStockThreshold={LOW_STOCK_THRESHOLD} />
     </section>
   );
 }
