@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import ThemeProvider from "@/components/providers/ThemeProvider";
 import LanguageProvider from "@/components/providers/LanguageProvider";
 
@@ -24,12 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full bg-background text-foreground font-[var(--font-geist),sans-serif]">
-        <ThemeProvider>
-          <LanguageProvider>{children}</LanguageProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    // ClerkProvider tüm uygulamayı sarar — <html> yapısını ve [[lang]] desteğini bozmaz.
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning className={`${geist.variable} h-full antialiased`}>
+        <body className="min-h-full bg-background text-foreground font-[var(--font-geist),sans-serif]">
+          <ThemeProvider>
+            <LanguageProvider>{children}</LanguageProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
