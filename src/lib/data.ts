@@ -77,6 +77,38 @@ export type CreateInventoryProductInput = {
   };
 };
 
+export type UpdateInventoryProductInput = CreateInventoryProductInput;
+
+export type InventoryProductForEdit = {
+  id: string;
+  sku: string;
+  slug: string;
+  category: CategoryKey;
+  price: number;
+  stock: number;
+  color: Color;
+  colorHex: string;
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+  };
+  images: string[];
+  featured: boolean;
+  translations: {
+    tr: {
+      name: string;
+      material: string;
+      description: string;
+    };
+    en: {
+      name: string;
+      material: string;
+      description: string;
+    };
+  };
+};
+
 function parsePrice(value: string | number): number {
   return typeof value === 'number' ? value : Number(value);
 }
@@ -345,5 +377,147 @@ export async function createInventoryProduct(input: CreateInventoryProductInput)
   } catch (error) {
     console.error('[data/createInventoryProduct] Failed to create product:', error);
     throw new Error('Urun eklenemedi. Lutfen alanlari kontrol edip tekrar deneyin.');
+  }
+}
+
+export async function getInventoryProductForEdit(productId: string): Promise<InventoryProductForEdit | null> {
+  try {
+    const [productRow] = await db
+      .select({
+        id: products.id,
+        sku: products.sku,
+        slug: products.slug,
+        category: products.category,
+        price: products.price,
+        stock: products.stock,
+        color: products.color,
+        colorHex: products.colorHex,
+        dimensions: products.dimensions,
+        images: products.images,
+        featured: products.featured,
+      })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
+
+    if (!productRow || !isCategoryKey(productRow.category) || !isColor(productRow.color)) {
+      return null;
+    }
+
+    const translationRows = await db
+      .select({
+        languageCode: productTranslations.languageCode,
+        name: productTranslations.name,
+        material: productTranslations.material,
+        description: productTranslations.description,
+      })
+      .from(productTranslations)
+      .where(eq(productTranslations.productId, productId));
+
+    const tr = translationRows.find((row) => row.languageCode === 'tr');
+    const en = translationRows.find((row) => row.languageCode === 'en');
+
+    return {
+      id: productRow.id,
+      sku: productRow.sku,
+      slug: productRow.slug,
+      category: productRow.category,
+      price: parsePrice(productRow.price),
+      stock: productRow.stock,
+      color: productRow.color,
+      colorHex: productRow.colorHex,
+      dimensions: productRow.dimensions,
+      images: productRow.images,
+      featured: productRow.featured,
+      translations: {
+        tr: {
+          name: tr?.name ?? '',
+          material: tr?.material ?? '',
+          description: tr?.description ?? '',
+        },
+        en: {
+          name: en?.name ?? '',
+          material: en?.material ?? '',
+          description: en?.description ?? '',
+        },
+      },
+    };
+  } catch (error) {
+    console.error('[data/getInventoryProductForEdit] Failed to fetch product:', error);
+    return null;
+  }
+}
+
+export async function updateInventoryProduct(
+  productId: string,
+  input: UpdateInventoryProductInput
+): Promise<void> {
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(products)
+        .set({
+          sku: input.sku,
+          slug: input.slug,
+          category: input.category,
+          price: input.price.toFixed(2),
+          stock: input.stock,
+          color: input.color,
+          colorHex: input.colorHex,
+          dimensions: input.dimensions,
+          images: input.images,
+          featured: input.featured,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, productId));
+
+      await tx
+        .insert(productTranslations)
+        .values({
+          productId,
+          languageCode: 'tr',
+          name: input.translations.tr.name,
+          material: input.translations.tr.material,
+          description: input.translations.tr.description,
+        })
+        .onConflictDoUpdate({
+          target: [productTranslations.productId, productTranslations.languageCode],
+          set: {
+            name: input.translations.tr.name,
+            material: input.translations.tr.material,
+            description: input.translations.tr.description,
+          },
+        });
+
+      await tx
+        .insert(productTranslations)
+        .values({
+          productId,
+          languageCode: 'en',
+          name: input.translations.en.name,
+          material: input.translations.en.material,
+          description: input.translations.en.description,
+        })
+        .onConflictDoUpdate({
+          target: [productTranslations.productId, productTranslations.languageCode],
+          set: {
+            name: input.translations.en.name,
+            material: input.translations.en.material,
+            description: input.translations.en.description,
+          },
+        });
+    });
+  } catch (error) {
+    console.error('[data/updateInventoryProduct] Failed to update product:', error);
+    throw new Error('Urun guncellenemedi. Lutfen tekrar deneyin.');
+  }
+}
+
+export async function deleteInventoryProduct(productId: string): Promise<void> {
+  try {
+    await db.delete(products).where(eq(products.id, productId));
+  } catch (error) {
+    console.error('[data/deleteInventoryProduct] Failed to delete product:', error);
+    throw new Error('Urun silinemedi. Lutfen tekrar deneyin.');
   }
 }

@@ -1,97 +1,13 @@
 import Image from 'next/image';
-import { revalidatePath } from 'next/cache';
-import { AlertTriangle, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { z } from 'zod';
-import { createInventoryProduct, getInventoryItems } from '@/lib/data';
+import Link from 'next/link';
+import { AlertTriangle, Plus, Search } from 'lucide-react';
+import { createInventoryProductAction, deleteInventoryProductAction } from '@/lib/actions/inventory-actions';
+import { getInventoryItems } from '@/lib/data';
 import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
 
 export const dynamic = "force-dynamic"; // Bu sayfanın statik olarak build edilmesini engeller
 
 const LOW_STOCK_THRESHOLD = 12;
-
-const createProductSchema = z.object({
-  sku: z.string().trim().min(3).max(64),
-  slug: z
-    .string()
-    .trim()
-    .min(3)
-    .max(160)
-    .regex(/^[a-z0-9-]+$/),
-  category: z.enum(CATEGORY_VALUES),
-  price: z.coerce.number().positive(),
-  stock: z.coerce.number().int().min(0),
-  color: z.enum(COLOR_VALUES),
-  colorHex: z.string().trim().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
-  width: z.coerce.number().positive(),
-  height: z.coerce.number().positive(),
-  depth: z.coerce.number().positive(),
-  images: z.array(z.string().url()).min(1),
-  featured: z.boolean(),
-  nameTr: z.string().trim().min(2),
-  materialTr: z.string().trim().min(2),
-  descriptionTr: z.string().trim().min(10),
-  nameEn: z.string().trim().min(2),
-  materialEn: z.string().trim().min(2),
-  descriptionEn: z.string().trim().min(10),
-});
-
-async function createProductAction(formData: FormData) {
-  'use server';
-
-  try {
-    const raw = Object.fromEntries(formData.entries());
-    const imageList = String(raw.images ?? '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    const parsed = createProductSchema.safeParse({
-      ...raw,
-      images: imageList,
-      featured: formData.get('featured') === 'on',
-    });
-
-    if (!parsed.success) {
-      console.error('[admin/inventory] Invalid new product payload:', parsed.error.flatten());
-      return;
-    }
-
-    const values = parsed.data;
-
-    await createInventoryProduct({
-      sku: values.sku,
-      slug: values.slug,
-      category: values.category,
-      price: values.price,
-      stock: values.stock,
-      color: values.color,
-      colorHex: values.colorHex,
-      dimensions: {
-        width: values.width,
-        height: values.height,
-        depth: values.depth,
-      },
-      images: values.images,
-      featured: values.featured,
-      translations: {
-        tr: {
-          name: values.nameTr,
-          material: values.materialTr,
-          description: values.descriptionTr,
-        },
-        en: {
-          name: values.nameEn,
-          material: values.materialEn,
-          description: values.descriptionEn,
-        },
-      },
-    });
-
-    revalidatePath('/admin/inventory');
-  } catch (error) {
-    console.error('[admin/inventory] Failed to create product:', error);
-  }
-}
 
 function toLabelCase(value: string): string {
   return value
@@ -145,7 +61,7 @@ export default async function AdminInventoryPage() {
             New Product
           </summary>
 
-          <form action={createProductAction} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <form action={createInventoryProductAction} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input name="sku" placeholder="SKU (TWW-XX-001)" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
             <input name="slug" placeholder="slug-example" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
 
@@ -282,14 +198,22 @@ export default async function AdminInventoryPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className="inline-flex min-h-12 min-w-12 items-center justify-center border border-transparent text-[#8e8e8e] transition-colors hover:border-[#2a2a2a] hover:text-white"
-                    aria-label={`More actions for ${title}`}
+                <div className="flex items-center justify-end gap-2">
+                  <Link
+                    href={`/admin/inventory/${item.id}/edit`}
+                    className="inline-flex min-h-9 items-center justify-center border border-[#2a2a2a] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#d3d3d3] transition-colors hover:border-white hover:text-white"
                   >
-                    <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    Edit
+                  </Link>
+
+                  <form action={deleteInventoryProductAction.bind(null, item.id)}>
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-9 items-center justify-center border border-[#3b2929] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0c2c2] transition-colors hover:border-[#f0c2c2] hover:text-white"
+                    >
+                      Delete
+                    </button>
+                  </form>
                 </div>
               </article>
             );

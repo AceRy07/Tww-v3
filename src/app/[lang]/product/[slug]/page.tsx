@@ -6,7 +6,6 @@ import { ArrowLeft, Layers, Ruler, Tag } from "lucide-react";
 import InquiryForm from "@/components/forms/InquiryForm";
 import { getAllProductSlugs, getProductBySlug } from "@/lib/data";
 import { hasLocale, locales } from "@/i18n/config";
-import { redirect } from "next/navigation";
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;

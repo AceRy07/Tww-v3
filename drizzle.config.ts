@@ -4,8 +4,29 @@ import { defineConfig } from 'drizzle-kit';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-if (!process.env.twwv3db_POSTGRES_URL) {
+const drizzleDbUrl = process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+if (!drizzleDbUrl) {
   throw new Error('POSTGRES_URL is required for Drizzle configuration.');
+}
+
+function normalizePgConnectionString(urlValue: string): string {
+  try {
+    const url = new URL(urlValue);
+    const sslmode = url.searchParams.get('sslmode');
+    const useLibpqCompat = url.searchParams.get('uselibpqcompat');
+
+    if (
+      (sslmode === 'prefer' || sslmode === 'require' || sslmode === 'verify-ca') &&
+      useLibpqCompat !== 'true'
+    ) {
+      url.searchParams.set('sslmode', 'verify-full');
+    }
+
+    return url.toString();
+  } catch {
+    return urlValue;
+  }
 }
 
 export default defineConfig({
@@ -13,7 +34,7 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dbCredentials: {
-    url: process.env.POSTGRES_URL_NON_POOLING || process.env.twwv3db_POSTGRES_URL || 'postgres://15e1110a062bc2c53918d009d76a3b7d232d7fa963bc3fc2b0d03cc633f48ede:sk_H9xOg_4lrlImj-I-dvcQL@db.prisma.io:5432/postgres?sslmode=require',
+    url: normalizePgConnectionString(drizzleDbUrl),
   },
   strict: true,
   verbose: true,
