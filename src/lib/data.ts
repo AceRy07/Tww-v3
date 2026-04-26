@@ -2,8 +2,8 @@ import 'server-only';
 
 import { and, desc, eq } from 'drizzle-orm';
 import type { Locale } from '@/i18n/config';
-import { db } from '@/lib/db';
 import { productTranslations, products } from '@/db/schema';
+import { db } from '@/lib/db';
 import {
   getCategoryLabel,
   isCategoryKey,
@@ -14,6 +14,10 @@ import {
 
 export type { CategoryKey, Color };
 export { COLORS, getCategoryOptions } from '@/lib/product-config';
+
+export type ActionResult<T = void> =
+  | { success: true; data?: T; message?: string }
+  | { success: false; message: string };
 
 export type Product = {
   id: string;
@@ -109,10 +113,6 @@ export type InventoryProductForEdit = {
   };
 };
 
-function parsePrice(value: string | number): number {
-  return typeof value === 'number' ? value : Number(value);
-}
-
 type ProductQueryRow = {
   id: string;
   slug: string;
@@ -128,6 +128,156 @@ type ProductQueryRow = {
   material: string | null;
   description: string | null;
 };
+
+type InventoryQueryRow = {
+  id: string;
+  sku: string;
+  price: string;
+  stock: number;
+  category: string;
+  slug: string;
+  images: string[];
+  title: string | null;
+  description: string | null;
+};
+
+type DbErrorShape = {
+  name?: string;
+  message?: string;
+  code?: string;
+  detail?: string;
+  constraint?: string;
+  cause?: unknown;
+};
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function parsePrice(value: string | number): number {
+  return typeof value === 'number' ? value : Number(value);
+}
+
+function toDbPrice(value: number): string {
+  return String(value);
+}
+
+function toObject(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function asDbError(error: unknown): DbErrorShape {
+  if (error instanceof Error) {
+    return error as DbErrorShape;
+  }
+
+  const record = toObject(error);
+  if (record) {
+    return {
+      name: typeof record.name === 'string' ? record.name : 'UnknownError',
+      message: typeof record.message === 'string' ? record.message : 'Unknown error',
+      code: typeof record.code === 'string' ? record.code : undefined,
+      detail: typeof record.detail === 'string' ? record.detail : undefined,
+      constraint: typeof record.constraint === 'string' ? record.constraint : undefined,
+      cause: record.cause,
+    };
+  }
+
+  return {
+    name: 'UnknownError',
+    message: 'Unknown error',
+  };
+}
+
+function getPgCode(error: unknown): string | undefined {
+  const normalized = asDbError(error);
+  if (normalized.code) {
+    return normalized.code;
+  }
+
+  const cause = toObject(normalized.cause);
+  if (cause && typeof cause.code === 'string') {
+    return cause.code;
+  }
+
+  return undefined;
+}
+
+function getConstraint(error: unknown): string | undefined {
+  const normalized = asDbError(error);
+  if (normalized.constraint) {
+    return normalized.constraint;
+  }
+
+  const cause = toObject(normalized.cause);
+  if (cause && typeof cause.constraint === 'string') {
+    return cause.constraint;
+  }
+
+  return undefined;
+}
+
+function getDetail(error: unknown): string | undefined {
+  const normalized = asDbError(error);
+  if (normalized.detail) {
+    return normalized.detail;
+  }
+
+  const cause = toObject(normalized.cause);
+  if (cause && typeof cause.detail === 'string') {
+    return cause.detail;
+  }
+
+  return undefined;
+}
+
+function logError(scope: string, error: unknown, context?: Record<string, unknown>) {
+  const normalized = asDbError(error);
+  const cause = toObject(normalized.cause);
+
+  console.error(`[data/${scope}]`, {
+    name: normalized.name,
+    message: normalized.message,
+    code: getPgCode(error),
+    constraint: getConstraint(error),
+    detail: getDetail(error),
+    causeName: cause && typeof cause.name === 'string' ? cause.name : undefined,
+    causeMessage: cause && typeof cause.message === 'string' ? cause.message : undefined,
+    context,
+  });
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return getPgCode(error) === '23505';
+}
+
+function getUniqueViolationMessage(error: unknown, fallbackMessage: string): string {
+  const constraint = getConstraint(error);
+  const detail = getDetail(error);
+
+  if (constraint?.includes('sku')) {
+    return 'Bu SKU zaten kullaniliyor.';
+  }
+
+  if (constraint?.includes('slug')) {
+    return 'Bu slug zaten kullaniliyor.';
+  }
+
+  if (constraint?.includes('product_lang')) {
+    return 'Bu urun icin ayni dilde ceviri zaten mevcut.';
+  }
+
+  if (detail && detail.toLowerCase().includes('slug')) {
+    return 'Bu slug zaten kullaniliyor.';
+  }
+
+  if (detail && detail.toLowerCase().includes('sku')) {
+    return 'Bu SKU zaten kullaniliyor.';
+  }
+
+  return fallbackMessage;
+}
 
 function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
   if (!isCategoryKey(row.category) || !isColor(row.color)) {
@@ -156,133 +306,152 @@ function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
   };
 }
 
+function mapToInventoryItem(row: InventoryQueryRow): InventoryItem | null {
+  if (!isCategoryKey(row.category)) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    sku: row.sku,
+    price: parsePrice(row.price),
+    stock: row.stock,
+    category: row.category,
+    slug: row.slug,
+    images: row.images,
+    title: row.title,
+    description: row.description,
+  };
+}
+
+function buildProductSelect() {
+  return {
+    id: products.id,
+    slug: products.slug,
+    sku: products.sku,
+    category: products.category,
+    price: products.price,
+    color: products.color,
+    colorHex: products.colorHex,
+    dimensions: products.dimensions,
+    images: products.images,
+    featured: products.featured,
+    title: productTranslations.name,
+    material: productTranslations.material,
+    description: productTranslations.description,
+  };
+}
+
+function buildInventorySelect() {
+  return {
+    id: products.id,
+    sku: products.sku,
+    price: products.price,
+    stock: products.stock,
+    category: products.category,
+    slug: products.slug,
+    images: products.images,
+    title: productTranslations.name,
+    description: productTranslations.description,
+  };
+}
+
+function queryProductsByLocale(locale: Locale) {
+  return db
+    .select(buildProductSelect())
+    .from(products)
+    .leftJoin(
+      productTranslations,
+      and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
+    );
+}
+
+function queryProductBySlugWithLocale(slug: string, locale: Locale) {
+  return db
+    .select(buildProductSelect())
+    .from(products)
+    .leftJoin(
+      productTranslations,
+      and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
+    )
+    .where(eq(products.slug, slug))
+    .limit(1);
+}
+
+async function upsertTranslation(
+  tx: Tx,
+  productId: string,
+  languageCode: 'tr' | 'en',
+  translation: { name: string; material: string; description: string }
+): Promise<void> {
+  const updated = await tx
+    .update(productTranslations)
+    .set({
+      name: translation.name,
+      material: translation.material,
+      description: translation.description,
+    })
+    .where(
+      and(eq(productTranslations.productId, productId), eq(productTranslations.languageCode, languageCode))
+    )
+    .returning({ id: productTranslations.id });
+
+  if (updated.length > 0) {
+    return;
+  }
+
+  await tx.insert(productTranslations).values({
+    productId,
+    languageCode,
+    name: translation.name,
+    material: translation.material,
+    description: translation.description,
+  });
+}
+
 export async function getProducts(locale: Locale): Promise<Product[]> {
   try {
-    const rows = await db
-      .select({
-        id: products.id,
-        slug: products.slug,
-        sku: products.sku,
-        category: products.category,
-        price: products.price,
-        color: products.color,
-        colorHex: products.colorHex,
-        dimensions: products.dimensions,
-        images: products.images,
-        featured: products.featured,
-        title: productTranslations.name,
-        material: productTranslations.material,
-        description: productTranslations.description,
-      })
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
-      )
-      .orderBy(desc(products.createdAt));
+    const rows = (await queryProductsByLocale(locale).orderBy(desc(products.createdAt))) as ProductQueryRow[];
 
     return rows
       .map((row) => mapToProduct(row, locale))
       .filter((product): product is Product => product !== null);
   } catch (error) {
-    console.error('[data/getProducts] Failed to fetch products:', error);
+    logError('getProducts', error, { locale });
     return [];
   }
 }
 
 export async function getProductBySlug(slug: string, locale: Locale): Promise<Product | undefined> {
   try {
-    const preferred = await db
-      .select({
-        id: products.id,
-        slug: products.slug,
-        sku: products.sku,
-        category: products.category,
-        price: products.price,
-        color: products.color,
-        colorHex: products.colorHex,
-        dimensions: products.dimensions,
-        images: products.images,
-        featured: products.featured,
-        title: productTranslations.name,
-        material: productTranslations.material,
-        description: productTranslations.description,
-      })
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
-      )
-      .where(eq(products.slug, slug))
-      .limit(1);
+    const preferredRows = (await queryProductBySlugWithLocale(slug, locale)) as ProductQueryRow[];
+    const preferred = preferredRows[0] ? mapToProduct(preferredRows[0], locale) : null;
 
-    const preferredProduct = preferred[0] ? mapToProduct(preferred[0], locale) : null;
-    if (preferredProduct) {
-      return preferredProduct;
+    if (preferred) {
+      return preferred;
     }
 
-    const fallback = await db
-      .select({
-        id: products.id,
-        slug: products.slug,
-        sku: products.sku,
-        category: products.category,
-        price: products.price,
-        color: products.color,
-        colorHex: products.colorHex,
-        dimensions: products.dimensions,
-        images: products.images,
-        featured: products.featured,
-        title: productTranslations.name,
-        material: productTranslations.material,
-        description: productTranslations.description,
-      })
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, 'en'))
-      )
-      .where(eq(products.slug, slug))
-      .limit(1);
+    const fallbackRows = (await queryProductBySlugWithLocale(slug, 'en')) as ProductQueryRow[];
+    const fallback = fallbackRows[0] ? mapToProduct(fallbackRows[0], locale) : null;
 
-    return fallback[0] ? mapToProduct(fallback[0], locale) ?? undefined : undefined;
+    return fallback ?? undefined;
   } catch (error) {
-    console.error('[data/getProductBySlug] Failed to fetch product:', error);
+    logError('getProductBySlug', error, { slug, locale });
     return undefined;
   }
 }
 
 export async function getFeaturedProducts(locale: Locale): Promise<Product[]> {
   try {
-    const rows = await db
-      .select({
-        id: products.id,
-        slug: products.slug,
-        sku: products.sku,
-        category: products.category,
-        price: products.price,
-        color: products.color,
-        colorHex: products.colorHex,
-        dimensions: products.dimensions,
-        images: products.images,
-        featured: products.featured,
-        title: productTranslations.name,
-        material: productTranslations.material,
-        description: productTranslations.description,
-      })
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
-      )
+    const rows = (await queryProductsByLocale(locale)
       .where(eq(products.featured, true))
-      .orderBy(desc(products.createdAt));
+      .orderBy(desc(products.createdAt))) as ProductQueryRow[];
 
     return rows
       .map((row) => mapToProduct(row, locale))
       .filter((product): product is Product => product !== null);
   } catch (error) {
-    console.error('[data/getFeaturedProducts] Failed to fetch featured products:', error);
+    logError('getFeaturedProducts', error, { locale });
     return [];
   }
 }
@@ -292,61 +461,46 @@ export async function getAllProductSlugs(): Promise<string[]> {
     const rows = await db.select({ slug: products.slug }).from(products);
     return rows.map((row) => row.slug);
   } catch (error) {
-    console.error('[data/getAllProductSlugs] Failed to fetch product slugs:', error);
+    logError('getAllProductSlugs', error);
     return [];
   }
 }
 
 export async function getInventoryItems(locale: Locale = 'tr'): Promise<InventoryItem[]> {
   try {
-    const rows = await db
-      .select({
-        id: products.id,
-        sku: products.sku,
-        price: products.price,
-        stock: products.stock,
-        category: products.category,
-        slug: products.slug,
-        images: products.images,
-        title: productTranslations.name,
-        description: productTranslations.description,
-      })
+    const rows = (await db
+      .select(buildInventorySelect())
       .from(products)
       .leftJoin(
         productTranslations,
         and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
       )
-      .orderBy(desc(products.createdAt));
+      .orderBy(desc(products.createdAt))) as InventoryQueryRow[];
 
     return rows
-      .filter((row) => isCategoryKey(row.category))
-      .map((row) => ({
-        id: row.id,
-        sku: row.sku,
-        price: parsePrice(row.price),
-        stock: row.stock,
-        category: row.category,
-        slug: row.slug,
-        images: row.images,
-        title: row.title,
-        description: row.description,
-      }));
+      .map(mapToInventoryItem)
+      .filter((item): item is InventoryItem => item !== null);
   } catch (error) {
-    console.error('[data/getInventoryItems] Failed to fetch inventory:', error);
+    logError('getInventoryItems', error, { locale });
     return [];
   }
 }
 
-export async function createInventoryProduct(input: CreateInventoryProductInput): Promise<void> {
+export async function createInventoryProduct(
+  input: CreateInventoryProductInput,
+  userId: string
+): Promise<ActionResult<{ id: string }>> {
+  if (!userId) throw new Error('Yetkisiz islem');
+
   try {
-    await db.transaction(async (tx) => {
-      const [created] = await tx
+    const created = await db.transaction(async (tx) => {
+      const createdRows = await tx
         .insert(products)
         .values({
           sku: input.sku,
           slug: input.slug,
           category: input.category,
-          price: input.price.toFixed(2),
+          price: toDbPrice(input.price),
           stock: input.stock,
           color: input.color,
           colorHex: input.colorHex,
@@ -357,32 +511,56 @@ export async function createInventoryProduct(input: CreateInventoryProductInput)
         })
         .returning({ id: products.id });
 
+      const createdProduct = createdRows[0];
+      if (!createdProduct) {
+        throw new Error('Urun kaydi olusturulamadi.');
+      }
+
       await tx.insert(productTranslations).values([
         {
-          productId: created.id,
+          productId: createdProduct.id,
           languageCode: 'tr',
           name: input.translations.tr.name,
           material: input.translations.tr.material,
           description: input.translations.tr.description,
         },
         {
-          productId: created.id,
+          productId: createdProduct.id,
           languageCode: 'en',
           name: input.translations.en.name,
           material: input.translations.en.material,
           description: input.translations.en.description,
         },
       ]);
+
+      return createdProduct;
     });
+
+    return {
+      success: true,
+      data: { id: created.id },
+      message: 'Urun basariyla olusturuldu.',
+    };
   } catch (error) {
-    console.error('[data/createInventoryProduct] Failed to create product:', error);
-    throw new Error('Urun eklenemedi. Lutfen alanlari kontrol edip tekrar deneyin.');
+    logError('createInventoryProduct', error, { userId, sku: input.sku, slug: input.slug });
+
+    if (isUniqueViolation(error)) {
+      return {
+        success: false,
+        message: getUniqueViolationMessage(error, 'Kayit zaten mevcut.'),
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Urun olusturulurken beklenmeyen bir hata olustu.',
+    };
   }
 }
 
 export async function getInventoryProductForEdit(productId: string): Promise<InventoryProductForEdit | null> {
   try {
-    const [productRow] = await db
+    const productRows = await db
       .select({
         id: products.id,
         sku: products.sku,
@@ -400,6 +578,7 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       .where(eq(products.id, productId))
       .limit(1);
 
+    const productRow = productRows[0];
     if (!productRow || !isCategoryKey(productRow.category) || !isColor(productRow.color)) {
       return null;
     }
@@ -443,24 +622,27 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       },
     };
   } catch (error) {
-    console.error('[data/getInventoryProductForEdit] Failed to fetch product:', error);
+    logError('getInventoryProductForEdit', error, { productId });
     return null;
   }
 }
 
 export async function updateInventoryProduct(
   productId: string,
-  input: UpdateInventoryProductInput
-): Promise<void> {
+  input: UpdateInventoryProductInput,
+  userId: string
+): Promise<ActionResult<{ id: string }>> {
+  if (!userId) throw new Error('Yetkisiz islem');
+
   try {
-    await db.transaction(async (tx) => {
-      await tx
+    const updatedProduct = await db.transaction(async (tx) => {
+      const updatedRows = await tx
         .update(products)
         .set({
           sku: input.sku,
           slug: input.slug,
           category: input.category,
-          price: input.price.toFixed(2),
+          price: toDbPrice(input.price),
           stock: input.stock,
           color: input.color,
           colorHex: input.colorHex,
@@ -469,55 +651,106 @@ export async function updateInventoryProduct(
           featured: input.featured,
           updatedAt: new Date(),
         })
-        .where(eq(products.id, productId));
+        .where(eq(products.id, productId))
+        .returning({ id: products.id });
 
-      await tx
-        .insert(productTranslations)
-        .values({
-          productId,
-          languageCode: 'tr',
-          name: input.translations.tr.name,
-          material: input.translations.tr.material,
-          description: input.translations.tr.description,
-        })
-        .onConflictDoUpdate({
-          target: [productTranslations.productId, productTranslations.languageCode],
-          set: {
-            name: input.translations.tr.name,
-            material: input.translations.tr.material,
-            description: input.translations.tr.description,
-          },
-        });
+      const updated = updatedRows[0];
+      if (!updated) {
+        return null;
+      }
 
-      await tx
-        .insert(productTranslations)
-        .values({
-          productId,
-          languageCode: 'en',
-          name: input.translations.en.name,
-          material: input.translations.en.material,
-          description: input.translations.en.description,
-        })
-        .onConflictDoUpdate({
-          target: [productTranslations.productId, productTranslations.languageCode],
-          set: {
-            name: input.translations.en.name,
-            material: input.translations.en.material,
-            description: input.translations.en.description,
-          },
-        });
+      await upsertTranslation(tx, productId, 'tr', {
+        name: input.translations.tr.name,
+        material: input.translations.tr.material,
+        description: input.translations.tr.description,
+      });
+
+      await upsertTranslation(tx, productId, 'en', {
+        name: input.translations.en.name,
+        material: input.translations.en.material,
+        description: input.translations.en.description,
+      });
+
+      return updated;
     });
+
+    if (!updatedProduct) {
+      return {
+        success: false,
+        message: 'Guncellenecek urun bulunamadi.',
+      };
+    }
+
+    return {
+      success: true,
+      data: { id: updatedProduct.id },
+      message: 'Urun basariyla guncellendi.',
+    };
   } catch (error) {
-    console.error('[data/updateInventoryProduct] Failed to update product:', error);
-    throw new Error('Urun guncellenemedi. Lutfen tekrar deneyin.');
+    logError('updateInventoryProduct', error, {
+      userId,
+      productId,
+      sku: input.sku,
+      slug: input.slug,
+    });
+
+    if (isUniqueViolation(error)) {
+      return {
+        success: false,
+        message: getUniqueViolationMessage(error, 'Ayni urun bilgileri zaten mevcut.'),
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Urun guncellenirken beklenmeyen bir hata olustu.',
+    };
   }
 }
 
-export async function deleteInventoryProduct(productId: string): Promise<void> {
+export async function deleteInventoryProduct(
+  productId: string,
+  userId: string
+): Promise<ActionResult<{ id: string }>> {
+  if (!userId) throw new Error('Yetkisiz islem');
+
   try {
-    await db.delete(products).where(eq(products.id, productId));
+    const deletedProduct = await db.transaction(async (tx) => {
+      await tx.delete(productTranslations).where(eq(productTranslations.productId, productId));
+
+      const deletedRows = await tx
+        .delete(products)
+        .where(eq(products.id, productId))
+        .returning({ id: products.id });
+
+      return deletedRows[0] ?? null;
+    });
+
+    if (!deletedProduct) {
+      return {
+        success: false,
+        message: 'Silinecek urun bulunamadi.',
+      };
+    }
+
+    return {
+      success: true,
+      data: { id: deletedProduct.id },
+      message: 'Urun basariyla silindi.',
+    };
   } catch (error) {
-    console.error('[data/deleteInventoryProduct] Failed to delete product:', error);
-    throw new Error('Urun silinemedi. Lutfen tekrar deneyin.');
+    logError('deleteInventoryProduct', error, { userId, productId });
+
+    if (isUniqueViolation(error)) {
+      return {
+        success: false,
+        message: getUniqueViolationMessage(error, 'Silme islemi benzersizlik kisitina takildi.'),
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Urun silinirken beklenmeyen bir hata olustu.',
+    };
   }
 }
