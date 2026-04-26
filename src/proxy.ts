@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { defaultLocale, locales } from "@/i18n/config";
 
+// Not: Bu projede middleware.ts yerine Next proxy kullaniliyor; /admin* korumasi Clerk ile bu dosyada uygulanir.
+
 /**
  * Korunan rotalar
  * - /admin ve /api/admin (dil öneki olsa bile)

@@ -21,3 +21,13 @@ export async function requireAdmin(): Promise<string> {
 
   return userId;
 }
+
+export async function withAdmin<T>(
+  action: () => Promise<T>
+): Promise<T> {
+  // Merkezi admin kontrolü: tüm admin action'lar bu wrapper üzerinden yetkilendirilir.
+  await requireAdmin();
+
+  // Yetki geçerliyse gerçek action çalıştırılır.
+  return await action();
+}
