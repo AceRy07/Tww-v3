@@ -1,91 +1,59 @@
+// src/proxy.ts
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { defaultLocale, locales } from "@/i18n/config";
 
-// Guvenlik notu: Next 16'da middleware yerine proxy kullanimi oneriliyor; admin korumasi burada zorunlu uygulanir.
-
-/**
- * Korunan rotalar
- * - /admin ve /api/admin (dil öneki olsa bile)
- * - /en/admin, /tr/admin vb. hepsini kapsar
- */
+// Gerçek admin rotalarını koru (sadece src/app/admin)
 const isProtectedRoute = createRouteMatcher([
-  '/admin(.*)',
-  '/api/admin(.*)',
-  '/:lang/admin(.*)',     // [[lang]] desteği için
+  '/admin(.*)',           // /admin, /admin/anything
+  '/:lang/admin(.*)',     // /tr/admin, /en/admin vb.
+  '/api/admin(.*)',       // admin API'leri
 ]);
 
-/**
- * i18n routing + Clerk auth bir arada çalışan proxy
- */
-export default clerkMiddleware(
+// Proxy fonksiyonu - Next.js 16 gerekliliği
+export const proxy = clerkMiddleware(
   async (auth, req: NextRequest) => {
-    // DEV/PROD ayrimi olmadan admin rotalarini daima koru: signed-out kullanici sign-in'e yonlendirilir.
+    // Admin rotalarını koru
     if (isProtectedRoute(req)) {
       await auth.protect();
     }
 
-    // i18n routing mantığını koru
+    // Basit ve güvenli i18n handling (redirect loop riskini minimuma indirdik)
     return handleI18nRouting(req);
   },
   {
-    // Gereksiz auth debug ciktilarini kapali tutuyoruz.
-    debug: false,
+    debug: process.env.NODE_ENV === 'development',
   }
 );
 
 function handleI18nRouting(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Admin yollarını normalize et ( /tr/admin → /admin )
-  const normalizedAdminPath = getLocalePrefixedAdminPath(pathname);
-  if (normalizedAdminPath) {
-    const nextUrl = req.nextUrl.clone();
-    nextUrl.pathname = normalizedAdminPath;
-    return NextResponse.redirect(nextUrl);
-  }
-
-  // Locale kontrolü
-  if (hasLocale(pathname) || isAdminPath(pathname)) {
+  // Zaten locale varsa veya admin yoluysa dokunma
+  if (hasLocale(pathname) || pathname.startsWith('/admin')) {
     return NextResponse.next();
   }
 
   // Default locale ekle
-  const locale = defaultLocale;
   const nextUrl = req.nextUrl.clone();
-  nextUrl.pathname = pathname === "/" 
-    ? `/${locale}` 
-    : `/${locale}${pathname}`;
+  nextUrl.pathname = pathname === '/' 
+    ? `/${defaultLocale}` 
+    : `/${defaultLocale}${pathname}`;
 
   return NextResponse.redirect(nextUrl);
 }
 
-function hasLocale(pathname: string) {
+function hasLocale(pathname: string): boolean {
   return locales.some((locale) => 
     pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)
   );
 }
 
-function isAdminPath(pathname: string) {
-  return pathname === "/admin" || pathname.startsWith("/admin/");
-}
-
-function getLocalePrefixedAdminPath(pathname: string) {
-  for (const locale of locales) {
-    if (pathname === `/${locale}/admin`) {
-      return "/admin";
-    }
-    if (pathname.startsWith(`/${locale}/admin/`)) {
-      return pathname.slice(locale.length + 1);
-    }
-  }
-  return null;
-}
-
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)).*)',
+    // Statik dosyaları ve Next.js internal route'ları atla
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json)).*)',
     '/(api|trpc)(.*)',
   ],
 };
