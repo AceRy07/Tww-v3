@@ -2,6 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import {
   createInventoryProduct,
   deleteInventoryProduct,
@@ -100,6 +101,8 @@ export async function createInventoryProductAction(formData: FormData) {
         data: result.data,
       };
     } catch (error) {
+      // redirect() / notFound() exception'larını yakalamadan geçir.
+      if (isRedirectError(error)) throw error;
       // Beklenmeyen hatalarda throw etmeden, istemciye güvenli ve tutarlı mesaj dön.
       console.error('[actions/createInventoryProductAction] Unexpected error:', error);
       return {
@@ -142,6 +145,8 @@ export async function updateInventoryProductAction(productId: string, formData: 
 
       return { success: true };
     } catch (error) {
+      // redirect() / notFound() exception'larını yakalamadan geçir.
+      if (isRedirectError(error)) throw error;
       // Beklenmeyen hatalarda throw etmeden güvenli mesaj dön.
       console.error('[actions/updateInventoryProductAction] Unexpected error:', error);
       return {
@@ -184,6 +189,8 @@ export async function deleteInventoryProductAction(formData: FormData) {
         success: true,
       };
     } catch (error) {
+      // redirect() / notFound() exception'larını yakalamadan geçir.
+      if (isRedirectError(error)) throw error;
       // Beklenmeyen hatalarda throw etmeden güvenli mesaj dön.
       console.error('[actions/deleteInventoryProductAction] Unexpected error:', error);
       return {
