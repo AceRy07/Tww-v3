@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { deleteInventoryProductAction } from '@/lib/actions/inventory-actions';
 import type { InventoryItem } from '@/lib/data';
 
@@ -29,6 +30,20 @@ function formatPrice(price: number): string {
 
 export default function InventoryTableClient({ inventoryItems, lowStockThreshold }: InventoryTableClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete(productId: string) {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('productId', productId);
+      const result = await deleteInventoryProductAction(formData);
+      if (result && !result.success) {
+        toast.error(result.message || 'Ürün silinemedi.');
+      } else {
+        toast.success('Ürün silindi.');
+      }
+    });
+  }
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -130,15 +145,14 @@ export default function InventoryTableClient({ inventoryItems, lowStockThreshold
                     Edit
                   </Link>
 
-                  <form action={deleteInventoryProductAction}>
-                    <input type="hidden" name="productId" value={item.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex min-h-9 items-center justify-center border border-[#3b2929] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0c2c2] transition-colors hover:border-[#f0c2c2] hover:text-white"
+                  <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={isPending}
+                      className="inline-flex min-h-9 items-center justify-center border border-[#3b2929] px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0c2c2] transition-colors hover:border-[#f0c2c2] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Delete
                     </button>
-                  </form>
                 </div>
               </article>
             );
