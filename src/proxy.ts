@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { defaultLocale, locales } from "@/i18n/config";
 
-// Not: Bu projede middleware.ts yerine Next proxy kullaniliyor; /admin* korumasi Clerk ile bu dosyada uygulanir.
+// Guvenlik notu: Next 16'da middleware yerine proxy kullanimi oneriliyor; admin korumasi burada zorunlu uygulanir.
 
 /**
  * Korunan rotalar
@@ -21,16 +21,7 @@ const isProtectedRoute = createRouteMatcher([
  */
 export default clerkMiddleware(
   async (auth, req: NextRequest) => {
-    const { pathname } = req.nextUrl;
-
-    // === DEV BYPASS (sadece localhost'ta) ===
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('🔧 [Clerk] DEV BYPASS aktif — /admin korumasız çalışıyor.');
-      // i18n routing'i devam ettir
-      return handleI18nRouting(req);
-    }
-
-    // Production: Korunan yollar için Clerk koruması
+    // DEV/PROD ayrimi olmadan admin rotalarini daima koru: signed-out kullanici sign-in'e yonlendirilir.
     if (isProtectedRoute(req)) {
       await auth.protect();
     }
@@ -39,9 +30,8 @@ export default clerkMiddleware(
     return handleI18nRouting(req);
   },
   {
-    // debug: process.env.NODE_ENV === 'development',
-    // Debug'ı kapat veya çok kısıtla
-    debug: false,   // ← bunu false yaparak gereksiz logları engelle
+    // Gereksiz auth debug ciktilarini kapali tutuyoruz.
+    debug: false,
   }
 );
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Toaster } from 'sonner';
 import "./globals.css";
 import ThemeProvider from "@/components/providers/ThemeProvider";
 import LanguageProvider from "@/components/providers/LanguageProvider";
@@ -27,7 +28,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground font-[var(--font-geist),sans-serif]">
         <ThemeProvider>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider>
+            {children}
+            {/* Global toaster: admin/server action sonucunda uretilen toast mesajlarini uygular. */}
+            <Toaster position="top-right" richColors />
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
