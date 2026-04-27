@@ -2,7 +2,6 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import {
   createInventoryProduct,
   deleteInventoryProduct,
@@ -140,7 +139,8 @@ export async function updateInventoryProductAction(productId: string, formData: 
 
       revalidatePath('/admin/inventory');
       revalidatePath(`/admin/inventory/${productId}/edit`);
-      redirect('/admin/inventory');
+
+      return { success: true };
     } catch (error) {
       // Beklenmeyen hatalarda throw etmeden güvenli mesaj dön.
       console.error('[actions/updateInventoryProductAction] Unexpected error:', error);

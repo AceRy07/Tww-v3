@@ -30,8 +30,12 @@ export const proxy = clerkMiddleware(
 function handleI18nRouting(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Zaten locale varsa veya admin yoluysa dokunma
-  if (hasLocale(pathname) || pathname.startsWith('/admin')) {
+  // API, admin veya zaten locale içeren yolları olduğu gibi geçir
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/admin') ||
+    hasLocale(pathname)
+  ) {
     return NextResponse.next();
   }
 
