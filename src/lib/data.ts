@@ -2,7 +2,7 @@ import 'server-only';
 
 import { and, desc, eq } from 'drizzle-orm';
 import type { Locale } from '@/i18n/config';
-import { productTranslations, products } from '@/db/schema';
+import { productImages, productTranslations, products } from '@/db/schema';
 import { db } from '@/lib/db';
 import {
   getCategoryLabel,
@@ -98,6 +98,13 @@ export type InventoryProductForEdit = {
     depth: number;
   };
   images: string[];
+  productImages: {
+    id: string;
+    url: string;
+    publicId: string;
+    displayOrder: number;
+    isPrimary: boolean;
+  }[];
   featured: boolean;
   translations: {
     tr: {
@@ -593,6 +600,18 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       .from(productTranslations)
       .where(eq(productTranslations.productId, productId));
 
+    const productImageRows = await db
+      .select({
+        id: productImages.id,
+        url: productImages.url,
+        publicId: productImages.publicId,
+        displayOrder: productImages.displayOrder,
+        isPrimary: productImages.isPrimary,
+      })
+      .from(productImages)
+      .where(eq(productImages.productId, productId))
+      .orderBy(productImages.displayOrder);
+
     const tr = translationRows.find((row) => row.languageCode === 'tr');
     const en = translationRows.find((row) => row.languageCode === 'en');
 
@@ -607,6 +626,7 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       colorHex: productRow.colorHex,
       dimensions: productRow.dimensions,
       images: productRow.images,
+      productImages: productImageRows,
       featured: productRow.featured,
       translations: {
         tr: {

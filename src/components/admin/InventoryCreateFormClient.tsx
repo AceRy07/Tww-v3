@@ -27,12 +27,15 @@ export default function InventoryCreateFormClient() {
         return;
       }
 
-      // Basarili durumda net kullanıcı geri bildirimi verip formu temizliyoruz.
-      toast.success('Ürün başarıyla eklendi');
-      formRef.current?.reset();
-
-      // Action icinde revalidate var; burada yeni tablo verisini almak icin sayfayi yeniliyoruz.
-      router.refresh();
+      // Basarili durumda edit sayfasına yönlendiriyoruz — ImageManager orada mevcut.
+      toast.success('Ürün başarıyla eklendi. Fotoğraf eklemek için düzenleme sayfasına yönlendiriliyorsunuz...');
+      const productId = result.data?.id;
+      if (productId) {
+        router.push(`/admin/inventory/${productId}/edit`);
+      } else {
+        formRef.current?.reset();
+        router.refresh();
+      }
     });
   }
 

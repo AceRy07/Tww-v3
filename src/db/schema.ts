@@ -62,8 +62,20 @@ export const productTranslations = pgTable(
   })
 );
 
+export const productImages = pgTable('product_images', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  publicId: text('public_id').notNull(),
+  displayOrder: integer('display_order').notNull().default(0),
+  isPrimary: boolean('is_primary').notNull().default(false),
+});
+
 export const productsRelations = relations(products, ({ many }) => ({
   translations: many(productTranslations),
+  images: many(productImages),
 }));
 
 export const productTranslationsRelations = relations(productTranslations, ({ one }) => ({
@@ -73,10 +85,19 @@ export const productTranslationsRelations = relations(productTranslations, ({ on
   }),
 }));
 
+export const productImagesRelations = relations(productImages, ({ one }) => ({
+  product: one(products, {
+    fields: [productImages.productId],
+    references: [products.id],
+  }),
+}));
+
 export type ProductRow = typeof products.$inferSelect;
 export type NewProductRow = typeof products.$inferInsert;
 export type ProductTranslationRow = typeof productTranslations.$inferSelect;
 export type NewProductTranslationRow = typeof productTranslations.$inferInsert;
+export type ProductImageRow = typeof productImages.$inferSelect;
+export type NewProductImageRow = typeof productImages.$inferInsert;
 
 export const inquiryStatusEnum = pgEnum('inquiry_status', [
   'pending',

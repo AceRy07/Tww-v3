@@ -19,7 +19,7 @@ export default async function AdminInventoryEditPage({ params }: PageProps) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1100px] border border-[#2a2a2a] bg-[#131313] p-5 md:p-8">
+    <section className="mx-auto w-full max-w-[1440px] border border-[#2a2a2a] bg-[#131313] p-5 md:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#2a2a2a] pb-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8e8e8e]">Inventory</p>
