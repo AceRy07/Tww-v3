@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Send, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { submitInquiry } from '@/lib/actions/inquiry-actions';
 
 const createSchema = (errors: {
   nameShort: string;
@@ -50,15 +51,10 @@ export default function InquiryForm({ productName, productSku, productSlug }: In
   const onSubmit = async (data: FormData) => {
     setServerError(null);
     try {
-      const res = await fetch('/api/inquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, productName, productSku, productSlug, locale }),
-      });
+      const result = await submitInquiry({ ...data, productName, productSku, productSlug, locale });
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error ?? dictionary.inquiry.errors.failed);
+      if ('error' in result) {
+        throw new Error(result.error);
       }
 
       setSubmitted(true);

@@ -22,7 +22,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Kanban', href: '/admin/kanban', icon: SquareKanban },
+  { label: 'Inquiries', href: '/admin/inquiries', icon: SquareKanban },
   { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
   { label: 'Calculator', href: '/admin/calculator', icon: Calculator },
   { label: 'Settings', href: '/admin/settings', icon: Settings },

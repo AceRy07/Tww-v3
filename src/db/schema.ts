@@ -77,3 +77,27 @@ export type ProductRow = typeof products.$inferSelect;
 export type NewProductRow = typeof products.$inferInsert;
 export type ProductTranslationRow = typeof productTranslations.$inferSelect;
 export type NewProductTranslationRow = typeof productTranslations.$inferInsert;
+
+export const inquiryStatusEnum = pgEnum('inquiry_status', [
+  'pending',
+  'quoted',
+  'in_production',
+  'shipped',
+  'completed',
+]);
+
+export const inquiries = pgTable('inquiries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  customerName: text('customer_name').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  status: inquiryStatusEnum('status').default('pending'),
+  productDetails: jsonb('product_details').$type<{
+    product?: string;
+    dimensions?: string;
+    notes?: string;
+  }>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export type InquiryRow = typeof inquiries.$inferSelect;
+export type NewInquiryRow = typeof inquiries.$inferInsert;
