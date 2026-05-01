@@ -1,5 +1,7 @@
 'use server';
 
+import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Resend } from 'resend';
 import { db } from '@/lib/db';
@@ -19,6 +21,11 @@ const inquirySchema = z.object({
 
 export type InquiryActionInput = z.infer<typeof inquirySchema>;
 export type InquiryActionResult = { success: true } | { error: string };
+
+const inquiryStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(['pending', 'quoted', 'in_production', 'shipped', 'completed']),
+});
 
 export async function submitInquiry(input: InquiryActionInput): Promise<InquiryActionResult> {
   const result = inquirySchema.safeParse(input);
@@ -174,4 +181,34 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
   }
 
   return { success: true };
+}
+
+export async function updateInquiryStatus(input: {
+  id: string;
+  status: 'pending' | 'quoted' | 'in_production' | 'shipped' | 'completed';
+}): Promise<InquiryActionResult> {
+  const parsed = inquiryStatusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: 'Invalid inquiry status payload.' };
+  }
+
+  try {
+    const updated = await db
+      .update(inquiries)
+      .set({ status: parsed.data.status })
+      .where(eq(inquiries.id, parsed.data.id))
+      .returning({ id: inquiries.id });
+
+    if (updated.length === 0) {
+      return { error: 'Inquiry not found.' };
+    }
+
+    revalidatePath('/admin/inquiries');
+    revalidatePath(`/admin/inquiries/${parsed.data.id}`);
+
+    return { success: true };
+  } catch (err) {
+    console.error('[updateInquiryStatus] Failed to update inquiry status:', err);
+    return { error: 'Failed to update inquiry status.' };
+  }
 }
