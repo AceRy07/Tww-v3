@@ -1,9 +1,10 @@
-import { AlertTriangle } from 'lucide-react';
-import InventoryCreateFormClient from '@/components/admin/InventoryCreateFormClient';
+﻿import { AlertTriangle, Plus } from 'lucide-react';
+import { createDraftProductAction } from '@/lib/actions/inventory-actions';
+
 import InventoryTableClient from '@/components/admin/InventoryTableClient';
 import { getInventoryItems } from '@/lib/data';
 
-export const dynamic = "force-dynamic"; // Bu sayfanın statik olarak build edilmesini engeller
+export const dynamic = "force-dynamic"; // Bu sayfanÄ±n statik olarak build edilmesini engeller
 
 const LOW_STOCK_THRESHOLD = 12;
 
@@ -23,8 +24,7 @@ export default async function AdminInventoryPage() {
           </h1>
         </div>
 
-        {/* Frontend action handling + toast feedback bu client form komponentinde yonetiliyor. */}
-        <InventoryCreateFormClient />
+        <form action={createDraftProductAction}><button type="submit" className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black"><Plus className="h-4 w-4" aria-hidden="true" />New Product</button></form>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -63,3 +63,6 @@ export default async function AdminInventoryPage() {
     </section>
   );
 }
+
+
+

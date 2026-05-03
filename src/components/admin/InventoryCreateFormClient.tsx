@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { Plus } from 'lucide-react';
+
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createInventoryProductAction } from '@/lib/actions/inventory-actions';
@@ -21,14 +21,14 @@ export default function InventoryCreateFormClient() {
       const result = await createInventoryProductAction(formData);
 
       if (!result.success) {
-        const message = result.message || 'Ürün oluşturulamadı.';
+        const message = result.message || 'ÃœrÃ¼n oluÅŸturulamadÄ±.';
         setFormError(message);
         toast.error(message);
         return;
       }
 
-      // Basarili durumda edit sayfasına yönlendiriyoruz — ImageManager orada mevcut.
-      toast.success('Ürün başarıyla eklendi. Fotoğraf eklemek için düzenleme sayfasına yönlendiriliyorsunuz...');
+      // Basarili durumda edit sayfasÄ±na yÃ¶nlendiriyoruz â€” ImageManager orada mevcut.
+      toast.success('ÃœrÃ¼n baÅŸarÄ±yla eklendi. FotoÄŸraf eklemek iÃ§in dÃ¼zenleme sayfasÄ±na yÃ¶nlendiriliyorsunuz...');
       const productId = result.data?.id;
       if (productId) {
         router.push(`/admin/inventory/${productId}/edit`);
@@ -40,13 +40,14 @@ export default function InventoryCreateFormClient() {
   }
 
   return (
-    <details className="w-full max-w-[720px] border border-[#2a2a2a] bg-[#191919] p-4 md:w-auto md:min-w-[560px]">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black">
-        <Plus className="h-4 w-4" aria-hidden="true" />
-        New Product
-      </summary>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between border border-[#2a2a2a] p-4">
+        <h2 className="font-[Inter,sans-serif] text-sm font-semibold uppercase tracking-[0.1em] text-white">
+          Create New Product
+        </h2>
+      </div>
 
-      <form ref={formRef} action={handleCreateInventoryProduct} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <form ref={formRef} action={handleCreateInventoryProduct} className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <input name="sku" placeholder="SKU (TWW-XX-001)" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         <input name="slug" placeholder="slug-example" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
 
@@ -69,7 +70,9 @@ export default function InventoryCreateFormClient() {
         <input name="price" type="number" step="0.01" min="0" placeholder="Price" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         <input name="stock" type="number" min="0" placeholder="Stock" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         <input name="colorHex" placeholder="#383838" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
-        <input name="images" placeholder="https://..., https://..." className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+        
+        {/* Placeholder for creation, actual images are added in the edit screen via ImageManager */}
+        <input type="hidden" name="images" value="https://res.cloudinary.com/tww/placeholder" />
 
         <input name="width" type="number" min="1" placeholder="Width" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         <input name="height" type="number" min="1" placeholder="Height" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
@@ -105,6 +108,11 @@ export default function InventoryCreateFormClient() {
           </button>
         </div>
       </form>
-    </details>
+    </div>
   );
 }
+
+
+
+
+

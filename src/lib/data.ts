@@ -1,6 +1,6 @@
-import 'server-only';
+﻿import 'server-only';
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, not, like } from 'drizzle-orm';
 import type { Locale } from '@/i18n/config';
 import { productImages, productTranslations, products } from '@/db/schema';
 import { db } from '@/lib/db';
@@ -474,15 +474,16 @@ export async function getAllProductSlugs(): Promise<string[]> {
 }
 
 export async function getInventoryItems(locale: Locale = 'tr'): Promise<InventoryItem[]> {
-  try {
-    const rows = (await db
-      .select(buildInventorySelect())
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
-      )
-      .orderBy(desc(products.createdAt))) as InventoryQueryRow[];
+    try {
+      const rows = (await db
+        .select(buildInventorySelect())
+        .from(products)
+        .leftJoin(
+          productTranslations,
+          and(eq(productTranslations.productId, products.id), eq(productTranslations.languageCode, locale))
+        )
+        .where(not(like(products.sku, 'DRAFT-%')))
+        .orderBy(desc(products.createdAt))) as InventoryQueryRow[];
 
     return rows
       .map(mapToInventoryItem)
@@ -774,3 +775,5 @@ export async function deleteInventoryProduct(
     };
   }
 }
+
+

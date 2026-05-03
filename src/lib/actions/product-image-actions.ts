@@ -361,3 +361,122 @@ export async function deleteProductImageAction(input: {
     }
   });
 }
+
+const mirrorUrlInputSchema = z.object({
+  productId: z.string().uuid(),
+  url: z.string().url(),
+});
+
+const MIRROR_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+/**
+ * URL Mirroring: Sunucu tarafinda URL'yi fetch eder, MIME tipini doğrular (image/*),
+ * boyut sınırını kontrol eder ve Cloudinary'ye yükleyip DB'ye kaydeder.
+ * SSRF riskini azaltmak için yalnızca admin yetkisiyle çalışır.
+ */
+export async function mirrorUrlToCloudinaryAction(input: {
+  productId: string;
+  url: string;
+}): Promise<UploadProductImageResult> {
+  return await withAdmin(async () => {
+    const parsed = mirrorUrlInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, message: 'Gecersiz URL verisi.' };
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(parsed.data.url, {
+        method: 'GET',
+        signal: AbortSignal.timeout(15_000),
+        headers: { 'User-Agent': 'TWW-ImageMirror/1.0' },
+        redirect: 'follow',
+      });
+    } catch {
+      return { success: false, message: 'URL erisimi saglanamadi.' };
+    }
+
+    if (!response.ok) {
+      return { success: false, message: `URL getirilemedi: HTTP ${response.status}` };
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.startsWith('image/')) {
+      return { success: false, message: 'URL bir gorsel kaynagina (image/*) isaret etmiyor.' };
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength > MIRROR_MAX_BYTES) {
+      return { success: false, message: 'Gorsel 20 MB sinirini asiyor.' };
+    }
+
+    const mimeType = contentType.split(';')[0].trim();
+    const dataUri = `data:${mimeType};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+
+    let uploadedPublicId: string | null = null;
+
+    try {
+      const uploaded = await cloudinary.uploader.upload(dataUri, {
+        folder: `tww/products/${parsed.data.productId}`,
+        resource_type: 'image',
+        unique_filename: true,
+      });
+
+      uploadedPublicId = uploaded.public_id;
+      const uploadedUrl = uploaded.secure_url;
+
+      if (!uploadedUrl || !uploadedPublicId) {
+        return { success: false, message: 'Cloudinary yuklemesi beklenen veriyi donmedi.' };
+      }
+
+      const persistedPublicId = uploadedPublicId;
+      const persistedUrl = uploadedUrl;
+
+      const inserted = await db.transaction(async (tx) => {
+        const existingImages = await tx
+          .select({ id: productImages.id })
+          .from(productImages)
+          .where(eq(productImages.productId, parsed.data.productId));
+
+        const displayOrder = existingImages.length;
+        const isPrimary = existingImages.length === 0;
+
+        const rows = await tx
+          .insert(productImages)
+          .values({
+            productId: parsed.data.productId,
+            url: persistedUrl,
+            publicId: persistedPublicId,
+            displayOrder,
+            isPrimary,
+          })
+          .returning({
+            id: productImages.id,
+            url: productImages.url,
+            publicId: productImages.publicId,
+            isPrimary: productImages.isPrimary,
+            displayOrder: productImages.displayOrder,
+          });
+
+        const created = rows[0];
+        if (!created) throw new Error('Product image kaydi olusturulamadi.');
+        return created;
+      });
+
+      revalidatePath('/admin/inventory');
+      revalidatePath(`/admin/inventory/${parsed.data.productId}/edit`);
+
+      return { success: true, data: inserted };
+    } catch (error) {
+      if (uploadedPublicId) {
+        try {
+          await cloudinary.uploader.destroy(uploadedPublicId, { resource_type: 'image' });
+        } catch (cleanupError) {
+          console.error('[mirrorUrlToCloudinaryAction] Cleanup failed:', cleanupError);
+        }
+      }
+      console.error('[mirrorUrlToCloudinaryAction] Unexpected error:', error);
+      return { success: false, message: 'URL gorsel olarak yuklenemedi.' };
+    }
+  });
+}
