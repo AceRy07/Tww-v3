@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
@@ -45,32 +45,32 @@ function mapParsedToInput(values: InventoryProductSchema) {
 }
 
 async function getAuthorizedActionUserId() {
-  // withAdmin role kontrolÃ¼nÃ¼ yaptÄ±ÄŸÄ± iÃ§in burada sadece userId'yi audit amaÃ§lÄ± alÄ±yoruz.
+  // withAdmin role kontrolünü yaptığı için burada sadece userId'yi audit amaçlı alıyoruz.
   const { userId } = await auth();
 
-  // Development bypass senaryosunda kimlik yoksa data katmanÄ±nÄ±n beklediÄŸi fallback id'yi kullan.
+  // Development bypass senaryosunda kimlik yoksa data katmanının beklediği fallback id'yi kullan.
   return userId ?? 'dev-user-id';
 }
 
 export async function createInventoryProductAction(formData: FormData) {
-  // TÃ¼m admin kontrolÃ¼nÃ¼ wrapper'a taÅŸÄ±yarak action iÃ§inde tekrar eden requireAdmin Ã§aÄŸrÄ±larÄ±nÄ± kaldÄ±rÄ±yoruz.
+  // Tüm admin kontrolünü wrapper'a taşıyarak action içinde tekrar eden requireAdmin çağrılarını kaldırıyoruz.
   return await withAdmin(async () => {
     try {
-      // TÃ¼m hata akÄ±ÅŸlarÄ±nÄ± structured response ile dÃ¶ndÃ¼rmek iÃ§in fonksiyonu tek bir try/catch iÃ§inde yÃ¶netiyoruz.
+      // Tüm hata akışlarını structured response ile döndürmek için fonksiyonu tek bir try/catch içinde yönetiyoruz.
       const userId = await getAuthorizedActionUserId();
 
       const parsed = parseInventoryProductFormData(formData);
 
-      // Zod/validation hatalarÄ±nda throw yerine tutarlÄ± response formatÄ± dÃ¶n.
+      // Zod/validation hatalarında throw yerine tutarlı response formatı dön.
       if (!parsed.success) {
         console.error('[actions/createInventoryProductAction] Validation failed:', parsed.error.flatten());
         return {
           success: false,
-          message: 'Form alanlarÄ± geÃ§ersiz. LÃ¼tfen bilgileri kontrol edin.',
+          message: 'Form alanları geçersiz. Lütfen bilgileri kontrol edin.',
         };
       }
 
-      // Insert Ã¶ncesi SKU benzersizlik kontrolÃ¼: DB unique hatasÄ±nÄ± kullanÄ±cÄ±ya 500 olarak yansÄ±tmamak iÃ§in erken dÃ¶n.
+      // Insert öncesi SKU benzersizlik kontrolü: DB unique hatasını kullanıcıya 500 olarak yansıtmamak için erken dön.
       const existingSku = await db.query.products.findFirst({
         where: (products, { eq }) => eq(products.sku, parsed.data.sku),
         columns: { id: true },
@@ -79,13 +79,13 @@ export async function createInventoryProductAction(formData: FormData) {
       if (existingSku) {
         return {
           success: false,
-          message: 'Bu SKU zaten kullanÄ±lÄ±yor.',
+          message: 'Bu SKU zaten kullanılıyor.',
         };
       }
 
       const result = await createInventoryProduct(mapParsedToInput(parsed.data), userId);
 
-      // Data katmanÄ±ndan gelen baÅŸarÄ±sÄ±zlÄ±klarÄ± da aynÄ± structured formatla ilet.
+      // Data katmanından gelen başarısızlıkları da aynı structured formatla ilet.
       if (!result.success) {
         return {
           success: false,
@@ -93,7 +93,7 @@ export async function createInventoryProductAction(formData: FormData) {
         };
       }
 
-      // Sadece baÅŸarÄ±lÄ± insert sonrasÄ±nda cache invalidation yap.
+      // Sadece başarılı insert sonrasında cache invalidation yap.
       revalidatePath('/admin/inventory');
 
       return {
@@ -101,38 +101,38 @@ export async function createInventoryProductAction(formData: FormData) {
         data: result.data,
       };
     } catch (error) {
-      // redirect() / notFound() exception'larÄ±nÄ± yakalamadan geÃ§ir.
+      // redirect() / notFound() exception'larını yakalamadan geçir.
       if (isRedirectError(error)) throw error;
-      // Beklenmeyen hatalarda throw etmeden, istemciye gÃ¼venli ve tutarlÄ± mesaj dÃ¶n.
+      // Beklenmeyen hatalarda throw etmeden, istemciye güvenli ve tutarlı mesaj dön.
       console.error('[actions/createInventoryProductAction] Unexpected error:', error);
       return {
         success: false,
-        message: 'ÃœrÃ¼n oluÅŸturulurken beklenmeyen bir hata oluÅŸtu.',
+        message: 'Ürün oluşturulurken beklenmeyen bir hata oluştu.',
       };
     }
   });
 }
 
 export async function updateInventoryProductAction(productId: string, formData: FormData) {
-  // Admin yetkilendirmesini merkezi wrapper Ã¼zerinden saÄŸlÄ±yoruz.
+  // Admin yetkilendirmesini merkezi wrapper üzerinden sağlıyoruz.
   return await withAdmin(async () => {
     try {
       const userId = await getAuthorizedActionUserId();
 
       const parsed = parseInventoryProductFormData(formData);
 
-      // Validation hatalarÄ±nÄ± throw yerine structured response ile dÃ¶ndÃ¼r.
+      // Validation hatalarını throw yerine structured response ile döndür.
       if (!parsed.success) {
         console.error('[actions/updateInventoryProductAction] Validation failed:', parsed.error.flatten());
         return {
           success: false,
-          message: 'Form alanlarÄ± geÃ§ersiz. LÃ¼tfen bilgileri kontrol edin.',
+          message: 'Form alanları geçersiz. Lütfen bilgileri kontrol edin.',
         };
       }
 
       const result = await updateInventoryProduct(productId, mapParsedToInput(parsed.data), userId);
 
-      // Data katmanÄ±ndan dÃ¶nen baÅŸarÄ±sÄ±zlÄ±klarÄ± da standart response formatÄ±nda ilet.
+      // Data katmanından dönen başarısızlıkları da standart response formatında ilet.
       if (!result.success) {
         return {
           success: false,
@@ -145,20 +145,20 @@ export async function updateInventoryProductAction(productId: string, formData: 
 
       return { success: true };
     } catch (error) {
-      // redirect() / notFound() exception'larÄ±nÄ± yakalamadan geÃ§ir.
+      // redirect() / notFound() exception'larını yakalamadan geçir.
       if (isRedirectError(error)) throw error;
-      // Beklenmeyen hatalarda throw etmeden gÃ¼venli mesaj dÃ¶n.
+      // Beklenmeyen hatalarda throw etmeden güvenli mesaj dön.
       console.error('[actions/updateInventoryProductAction] Unexpected error:', error);
       return {
         success: false,
-        message: 'ÃœrÃ¼n gÃ¼ncellenirken beklenmeyen bir hata oluÅŸtu.',
+        message: 'Ürün güncellenirken beklenmeyen bir hata oluştu.',
       };
     }
   });
 }
 
 export async function deleteInventoryProductAction(formData: FormData) {
-  // Admin yetkilendirmesini merkezi wrapper Ã¼zerinden saÄŸlÄ±yoruz.
+  // Admin yetkilendirmesini merkezi wrapper üzerinden sağlıyoruz.
   return await withAdmin(async () => {
     try {
       const userId = await getAuthorizedActionUserId();
@@ -166,11 +166,11 @@ export async function deleteInventoryProductAction(formData: FormData) {
       const productIdValue = formData.get('productId');
       const productId = typeof productIdValue === 'string' ? productIdValue : '';
 
-      // Eksik productId durumunda throw yerine structured response dÃ¶n.
+      // Eksik productId durumunda throw yerine structured response dön.
       if (!productId) {
         return {
           success: false,
-          message: 'Silinecek Ã¼rÃ¼n kimliÄŸi bulunamadÄ±.',
+          message: 'Silinecek ürün kimliği bulunamadı.',
         };
       }
 
@@ -189,13 +189,13 @@ export async function deleteInventoryProductAction(formData: FormData) {
         success: true,
       };
     } catch (error) {
-      // redirect() / notFound() exception'larÄ±nÄ± yakalamadan geÃ§ir.
+      // redirect() / notFound() exception'larını yakalamadan geçir.
       if (isRedirectError(error)) throw error;
-      // Beklenmeyen hatalarda throw etmeden gÃ¼venli mesaj dÃ¶n.
+      // Beklenmeyen hatalarda throw etmeden güvenli mesaj dön.
       console.error('[actions/deleteInventoryProductAction] Unexpected error:', error);
       return {
         success: false,
-        message: 'ÃœrÃ¼n silinirken beklenmeyen bir hata oluÅŸtu.',
+        message: 'Ürün silinirken beklenmeyen bir hata oluştu.',
       };
     }
   });
@@ -206,7 +206,7 @@ import { redirect } from 'next/navigation';
 import { products, productTranslations } from '@/db/schema';
 import { randomUUID } from 'crypto';
 
-export async function createDraftProductAction() {
+export async function createDraftProductAction(formData?: FormData) {
   return await withAdmin(async () => {
     let draftId = '';
     try {

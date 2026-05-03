@@ -24,7 +24,12 @@ export default async function AdminInventoryPage() {
           </h1>
         </div>
 
-        <form action={createDraftProductAction}><button type="submit" className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black"><Plus className="h-4 w-4" aria-hidden="true" />New Product</button></form>
+        <form action={createDraftProductAction as unknown as (payload: FormData) => void}>
+          <button type="submit" className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New Product
+          </button>
+        </form>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">

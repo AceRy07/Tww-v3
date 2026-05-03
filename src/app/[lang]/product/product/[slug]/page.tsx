@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default async function ProductRedirectPage({ params }: PageProps<"/[lang]/product/product/[slug]">) {
+export default async function ProductRedirectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   redirect(`/en/product/${slug}`);
 }
