@@ -417,12 +417,31 @@ export default function SettingsFiltersClient({ initialCategories, initialColors
             return;
           }
 
+          const created = result.data;
+          if (
+            typeof created.id !== 'string' ||
+            typeof created.name !== 'string' ||
+            typeof created.slug !== 'string' ||
+            typeof created.isActive !== 'boolean' ||
+            typeof created.sortOrder !== 'number' ||
+            !created.createdAt
+          ) {
+            toast.error('Category response is invalid.');
+            return;
+          }
+
+          const nextCategory: CategoryItem = {
+            id: created.id,
+            name: created.name,
+            slug: created.slug,
+            isActive: created.isActive,
+            sortOrder: created.sortOrder,
+            createdAt: new Date(created.createdAt).toISOString(),
+          };
+
           setCategories((prev) => [
             ...prev,
-            {
-              ...result.data,
-              createdAt: new Date(result.data.createdAt).toISOString(),
-            },
+            nextCategory,
           ]);
           toast.success('Category created.');
           closeModal();
@@ -456,12 +475,33 @@ export default function SettingsFiltersClient({ initialCategories, initialColors
           return;
         }
 
+        const created = result.data;
+        if (
+          typeof created.id !== 'string' ||
+          typeof created.name !== 'string' ||
+          typeof created.hex !== 'string' ||
+          typeof created.slug !== 'string' ||
+          typeof created.isActive !== 'boolean' ||
+          typeof created.sortOrder !== 'number' ||
+          !created.createdAt
+        ) {
+          toast.error('Color response is invalid.');
+          return;
+        }
+
+        const nextColor: ColorItem = {
+          id: created.id,
+          name: created.name,
+          hex: created.hex,
+          slug: created.slug,
+          isActive: created.isActive,
+          sortOrder: created.sortOrder,
+          createdAt: new Date(created.createdAt).toISOString(),
+        };
+
         setColors((prev) => [
           ...prev,
-          {
-            ...result.data,
-            createdAt: new Date(result.data.createdAt).toISOString(),
-          },
+          nextColor,
         ]);
         toast.success('Color created.');
         closeModal();
