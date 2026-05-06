@@ -5,7 +5,12 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import FilterBar from '@/components/catalog/FilterBar';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 
-export default function FilterDrawer() {
+type FilterDrawerProps = {
+  categoryOptions: Array<{ slug: string; name: string }>;
+  colorOptions: Array<{ name: string; hex: string }>;
+};
+
+export default function FilterDrawer({ categoryOptions, colorOptions }: FilterDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { locale } = useLanguage();
 
@@ -44,7 +49,7 @@ export default function FilterDrawer() {
         </div>
 
         <div className="overflow-y-auto h-[calc(100vh-80px)] p-6">
-          <FilterBar />
+          <FilterBar categoryOptions={categoryOptions} colorOptions={colorOptions} />
         </div>
       </div>
     </>

@@ -2,21 +2,23 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { COLORS, getCategoryOptions, type CategoryKey, type Color } from '@/lib/product-config';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 
-export default function FilterBar() {
+type FilterBarProps = {
+  categoryOptions: Array<{ slug: string; name: string }>;
+  colorOptions: Array<{ name: string; hex: string }>;
+};
+
+export default function FilterBar({ categoryOptions, colorOptions }: FilterBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { locale } = useLanguage();
 
-  const categoryOptions = getCategoryOptions(locale);
-
-  const selectedCategories = searchParams.getAll('cat') as CategoryKey[];
-  const selectedColors = searchParams.getAll('color') as Color[];
+  const selectedCategories = searchParams.getAll('cat');
+  const selectedColors = searchParams.getAll('color');
   const minPrice = Number(searchParams.get('minPrice') ?? 0);
   const maxPrice = Number(searchParams.get('maxPrice') ?? 10000);
   const minWidth = Number(searchParams.get('minWidth') ?? 0);
@@ -46,14 +48,14 @@ export default function FilterBar() {
     [router, pathname, searchParams]
   );
 
-  const toggleCategory = (cat: CategoryKey) => {
+  const toggleCategory = (cat: string) => {
     const next = selectedCategories.includes(cat)
       ? selectedCategories.filter((c) => c !== cat)
       : [...selectedCategories, cat];
     updateParams({ cat: next.length ? next : null });
   };
 
-  const toggleColor = (color: Color) => {
+  const toggleColor = (color: string) => {
     const next = selectedColors.includes(color)
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
@@ -99,16 +101,16 @@ export default function FilterBar() {
         <div className="flex flex-col gap-2">
           {categoryOptions.map((cat) => (
             <button
-              key={cat.key}
-              onClick={() => toggleCategory(cat.key)}
+              key={cat.slug}
+              onClick={() => toggleCategory(cat.slug)}
               className={cn(
                 'text-left text-sm px-3 py-2 rounded-lg transition-all',
-                selectedCategories.includes(cat.key)
+                selectedCategories.includes(cat.slug)
                   ? 'bg-foreground text-background'
                   : 'text-muted-foreground hover:bg-muted'
               )}
             >
-              {cat.label}
+              {cat.name}
             </button>
           ))}
         </div>
@@ -119,7 +121,7 @@ export default function FilterBar() {
           {locale === 'tr' ? 'Yuzey / Renk' : 'Finish / Color'}
         </h3>
         <div className="flex flex-wrap gap-2">
-          {COLORS.map((c) => (
+          {colorOptions.map((c) => (
             <button
               key={c.name}
               onClick={() => toggleColor(c.name)}

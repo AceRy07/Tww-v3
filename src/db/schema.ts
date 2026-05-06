@@ -17,6 +17,25 @@ import type { CategoryKey, Color } from '@/lib/product-config';
 
 export const languageCodeEnum = pgEnum('language_code', ['tr', 'en']);
 
+export const categories = pgTable('categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  isActive: boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const colors = pgTable('colors', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  hex: text('hex').notNull(),
+  slug: text('slug').notNull().unique(),
+  isActive: boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const products = pgTable(
   'products',
   {

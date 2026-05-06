@@ -1,8 +1,8 @@
 ﻿import 'server-only';
 
-import { and, desc, eq, not, like } from 'drizzle-orm';
+import { and, asc, desc, eq, like, not } from 'drizzle-orm';
 import type { Locale } from '@/i18n/config';
-import { productImages, productTranslations, products } from '@/db/schema';
+import { categories, colors, productImages, productTranslations, products } from '@/db/schema';
 import { db } from '@/lib/db';
 import {
   getCategoryLabel,
@@ -118,6 +118,16 @@ export type InventoryProductForEdit = {
       description: string;
     };
   };
+};
+
+export type CatalogCategoryFilterOption = {
+  slug: string;
+  name: string;
+};
+
+export type CatalogColorFilterOption = {
+  name: string;
+  hex: string;
 };
 
 type ProductQueryRow = {
@@ -425,6 +435,36 @@ export async function getProducts(locale: Locale): Promise<Product[]> {
       .filter((product): product is Product => product !== null);
   } catch (error) {
     logError('getProducts', error, { locale });
+    return [];
+  }
+}
+
+export async function getActiveCategoryFilters(): Promise<CatalogCategoryFilterOption[]> {
+  try {
+    const rows = await db
+      .select({ slug: categories.slug, name: categories.name })
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(asc(categories.sortOrder), asc(categories.createdAt));
+
+    return rows;
+  } catch (error) {
+    logError('getActiveCategoryFilters', error);
+    return [];
+  }
+}
+
+export async function getActiveColorFilters(): Promise<CatalogColorFilterOption[]> {
+  try {
+    const rows = await db
+      .select({ name: colors.name, hex: colors.hex })
+      .from(colors)
+      .where(eq(colors.isActive, true))
+      .orderBy(asc(colors.sortOrder), asc(colors.createdAt));
+
+    return rows;
+  } catch (error) {
+    logError('getActiveColorFilters', error);
     return [];
   }
 }

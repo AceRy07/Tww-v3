@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProducts, type CategoryKey, type Color } from "@/lib/data";
+import { getActiveCategoryFilters, getActiveColorFilters, getProducts } from "@/lib/data";
 import { hasLocale } from "@/i18n/config";
 import ProductCard from "@/components/catalog/ProductCard";
 import FilterBar from "@/components/catalog/FilterBar";
@@ -57,6 +57,10 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   const maxDepth = Number(queryParams.maxDepth ?? Infinity);
 
   const products = await getProducts(lang);
+  const [categoryFilters, colorFilters] = await Promise.all([
+    getActiveCategoryFilters(),
+    getActiveColorFilters(),
+  ]);
   const filtered = products.filter((p) => {
     if (
       query &&
@@ -66,8 +70,8 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
       return false;
     }
 
-    if (categories.length && !categories.includes(p.category as CategoryKey)) return false;
-    if (colors.length && !colors.includes(p.color as Color)) return false;
+    if (categories.length && !categories.includes(p.category)) return false;
+    if (colors.length && !colors.includes(p.color)) return false;
     if (p.price < minPrice) return false;
     if (queryParams.maxPrice && p.price > maxPrice) return false;
     if (p.dimensions.width < minWidth || p.dimensions.width > maxWidth) return false;
@@ -94,7 +98,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
           <aside className="hidden w-60 shrink-0 lg:block">
             <div className="sticky top-24">
               <Suspense>
-                <FilterBar />
+                <FilterBar categoryOptions={categoryFilters} colorOptions={colorFilters} />
               </Suspense>
             </div>
           </aside>
@@ -106,7 +110,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
                   <SearchInput />
                 </Suspense>
               </div>
-              <FilterDrawer />
+              <FilterDrawer categoryOptions={categoryFilters} colorOptions={colorFilters} />
             </div>
 
             <p className="mb-6 text-xs text-muted-foreground">
