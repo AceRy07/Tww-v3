@@ -540,22 +540,24 @@ export async function createInventoryProduct(
 
   try {
     const created = await db.transaction(async (tx) => {
+      const productData = {
+        sku: input.sku,
+        slug: input.slug,
+        category: input.category,
+        price: toDbPrice(input.price),
+        stock: input.stock,
+        color: input.color,
+        colorHex: input.colorHex,
+        dimensions: input.dimensions,
+        images: input.images,
+        featured: input.featured,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
       const createdRows = await tx
         .insert(products)
-        .values({
-          sku: input.sku,
-          slug: input.slug,
-          category: input.category,
-          price: toDbPrice(input.price),
-          stock: input.stock,
-          color: input.color,
-          colorHex: input.colorHex,
-          dimensions: input.dimensions,
-          images: input.images,
-          featured: input.featured,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
+        .values(productData)
         .returning({ id: products.id });
 
       const createdProduct = createdRows[0];
