@@ -347,49 +347,61 @@ export default function ImageManager({ productId, images: initialImages, onPendi
         ? () => mirrorUrlToCloudinaryAction({ productId, url: source })
         : () => uploadProductImageAction({ productId, source });
 
-    action().then((result) => {
-      // User deleted this item while it was uploading - clean up any orphan record
-      if (removedClientIdsRef.current.has(clientId)) {
-        removedClientIdsRef.current.delete(clientId);
-        if (result.success) {
-          deleteProductImageAction({ productId, imageId: result.data.id }).catch(console.error);
-        }
-        return;
-      }
-
-      if (result.success) {
-        setLocalImages((prev) => {
-          const target = prev.find((img) => img.clientId === clientId);
-          if (target?.previewUrl?.startsWith('blob:')) {
-            URL.revokeObjectURL(target.previewUrl);
+    action()
+      .then((result) => {
+        // User deleted this item while it was uploading - clean up any orphan record
+        if (removedClientIdsRef.current.has(clientId)) {
+          removedClientIdsRef.current.delete(clientId);
+          if (result.success) {
+            deleteProductImageAction({ productId, imageId: result.data.id }).catch(console.error);
           }
-          return prev.map((img) =>
-            img.clientId === clientId
-              ? {
-                  ...img,
-                  status: 'success' as const,
-                  previewUrl: result.data.url,
-                  serverId: result.data.id,
-                  serverUrl: result.data.url,
-                  serverPublicId: result.data.publicId,
-                  isPrimary: result.data.isPrimary,
-                }
-              : img
+          return;
+        }
+
+        if (result.success) {
+          setLocalImages((prev) => {
+            const target = prev.find((img) => img.clientId === clientId);
+            if (target?.previewUrl?.startsWith('blob:')) {
+              URL.revokeObjectURL(target.previewUrl);
+            }
+            return prev.map((img) =>
+              img.clientId === clientId
+                ? {
+                    ...img,
+                    status: 'success' as const,
+                    previewUrl: result.data.url,
+                    serverId: result.data.id,
+                    serverUrl: result.data.url,
+                    serverPublicId: result.data.publicId,
+                    isPrimary: result.data.isPrimary,
+                  }
+                : img
+            );
+          });
+          setSavedOrderIds((prev) => [...prev, result.data.id]);
+          uploadSourcesRef.current.delete(clientId);
+        } else {
+          setLocalImages((prev) =>
+            prev.map((img) =>
+              img.clientId === clientId
+                ? { ...img, status: 'error' as const, error: result.message }
+                : img
+            )
           );
-        });
-        setSavedOrderIds((prev) => [...prev, result.data.id]);
-        uploadSourcesRef.current.delete(clientId);
-      } else {
+          toast.error(result.message ?? 'Gorsel yuklenemedi.');
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('[runUpload] Server action call failed:', error);
         setLocalImages((prev) =>
           prev.map((img) =>
             img.clientId === clientId
-              ? { ...img, status: 'error' as const, error: result.message }
+              ? { ...img, status: 'error' as const, error: 'Sunucu ile baglanti kurulamadi.' }
               : img
           )
         );
-        toast.error(result.message ?? 'Gorsel yuklenemedi.');
-      }
-    });
+        toast.error('Gorsel yuklenirken bir hata olustu. Lutfen tekrar deneyin.');
+      });
   }
 
   // -- File / URL handlers ----------------------------------------------------

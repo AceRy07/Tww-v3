@@ -7,7 +7,6 @@ import { db } from '@/lib/db';
 import {
   getCategoryLabel,
   isCategoryKey,
-  isColor,
   type CategoryKey,
   type Color,
 } from '@/lib/product-config';
@@ -24,11 +23,11 @@ export type Product = {
   slug: string;
   sku: string;
   title: string;
-  category: CategoryKey;
+  category: string;
   categoryLabel: string;
   price: number;
   material: string;
-  color: Color;
+  color: string;
   colorHex: string;
   dimensions: {
     width: number;
@@ -45,7 +44,7 @@ export type InventoryItem = {
   sku: string;
   price: number;
   stock: number;
-  category: CategoryKey;
+  category: string;
   slug: string;
   images: string[];
   title: string | null;
@@ -55,10 +54,10 @@ export type InventoryItem = {
 export type CreateInventoryProductInput = {
   sku: string;
   slug: string;
-  category: CategoryKey;
+  category: string;
   price: number;
   stock: number;
-  color: Color;
+  color: string;
   colorHex: string;
   dimensions: {
     width: number;
@@ -87,10 +86,10 @@ export type InventoryProductForEdit = {
   id: string;
   sku: string;
   slug: string;
-  category: CategoryKey;
+  category: string;
   price: number;
   stock: number;
-  color: Color;
+  color: string;
   colorHex: string;
   dimensions: {
     width: number;
@@ -297,13 +296,16 @@ function getUniqueViolationMessage(error: unknown, fallbackMessage: string): str
 }
 
 function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
-  if (!isCategoryKey(row.category) || !isColor(row.color)) {
-    return null;
-  }
-
   if (!row.title || !row.material || !row.description) {
     return null;
   }
+
+  const categoryLabel = isCategoryKey(row.category)
+    ? getCategoryLabel(row.category, locale)
+    : row.category
+        .split('-')
+        .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+        .join(' ');
 
   return {
     id: row.id,
@@ -311,7 +313,7 @@ function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
     sku: row.sku,
     title: row.title,
     category: row.category,
-    categoryLabel: getCategoryLabel(row.category, locale),
+    categoryLabel,
     price: parsePrice(row.price),
     material: row.material,
     color: row.color,
@@ -323,11 +325,7 @@ function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
   };
 }
 
-function mapToInventoryItem(row: InventoryQueryRow): InventoryItem | null {
-  if (!isCategoryKey(row.category)) {
-    return null;
-  }
-
+function mapToInventoryItem(row: InventoryQueryRow): InventoryItem {
   return {
     id: row.id,
     sku: row.sku,
@@ -627,7 +625,7 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       .limit(1);
 
     const productRow = productRows[0];
-    if (!productRow || !isCategoryKey(productRow.category) || !isColor(productRow.color)) {
+    if (!productRow) {
       return null;
     }
 

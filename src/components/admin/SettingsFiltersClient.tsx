@@ -41,9 +41,9 @@ import {
   bulkUpdateColorStatusAction,
   createColorAction,
   deleteColorAction,
-  updateColorNameAction,
   updateColorSortOrderAction,
   updateColorStatusAction,
+  updateColorAction,
 } from '@/lib/actions/color-actions';
 
 type CategoryItem = {
@@ -509,14 +509,15 @@ export default function SettingsFiltersClient({ initialCategories, initialColors
       }
 
       if (!modal.id) return;
-      const result = await updateColorNameAction(modal.id, trimmedName);
+      const normalizedHex = hexInput.trim().toUpperCase();
+      const result = await updateColorAction(modal.id, trimmedName, normalizedHex);
       if (!result.success) {
-        toast.error(result.message || 'Color name could not be updated.');
+        toast.error(result.message || 'Color could not be updated.');
         return;
       }
 
-      setColors((prev) => prev.map((item) => (item.id === modal.id ? { ...item, name: trimmedName } : item)));
-      toast.success('Color name updated.');
+      setColors((prev) => prev.map((item) => (item.id === modal.id ? { ...item, name: trimmedName, hex: normalizedHex } : item)));
+      toast.success('Color updated.');
       closeModal();
     });
   }

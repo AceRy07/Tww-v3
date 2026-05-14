@@ -16,6 +16,7 @@ const inquirySchema = z.object({
   productName: z.string().max(200),
   productSku: z.string().max(50),
   productSlug: z.string().max(100),
+  primaryImageUrl: z.string().max(2000).optional(),
   locale: z.string().optional(),
 });
 
@@ -33,7 +34,7 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
     return { error: 'Invalid form data.' };
   }
 
-  const { name, email, requestedDimensions, message, productName, productSku, productSlug, locale } =
+  const { name, email, requestedDimensions, message, productName, productSku, productSlug, primaryImageUrl, locale } =
     result.data;
 
   const resolvedLocale = locale && hasLocale(locale) ? locale : 'en';
@@ -47,6 +48,9 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
       status: 'pending',
       productDetails: {
         product: `${productName} (${productSku})`,
+        productName,
+        productSlug,
+        productImage: primaryImageUrl ?? '',
         dimensions: requestedDimensions ?? '',
         notes: message,
       },

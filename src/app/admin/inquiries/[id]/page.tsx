@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
-import { inquiries } from '@/db/schema';
+import { inquiries, products } from '@/db/schema';
 import { Button } from '@/components/ui/button';
 import { updateInquiryStatus } from '@/lib/actions/inquiry-actions';
 
@@ -111,9 +111,30 @@ export default async function AdminInquiryDetailPage({ params }: PageProps) {
 
   const productName = asText(productDetails?.productName ?? productDetails?.product, 'Unspecified product');
   const productId = asText(productDetails?.productId, 'Not provided');
-  const productSlug = asText(productDetails?.productSlug, '');
-  const productImage = asText(productDetails?.productImage, '');
-  const productUrl = `/products/${productSlug}`;
+  let productSlug = asText(productDetails?.productSlug, '');
+  let productImage = asText(productDetails?.productImage, '');
+  
+  // Eğer eski kayıtlarda görsel yoksa, productName ("isim (SKU)") formatından SKU'yu çıkarıp çekmeyi dene
+  if (!productImage && productDetails?.product) {
+    const skuMatch = productDetails.product.match(/\(([^)]+)\)$/);
+    if (skuMatch && skuMatch[1]) {
+      const sku = skuMatch[1].trim();
+      const productRow = await db.query.products.findFirst({
+        where: eq(products.sku, sku),
+        columns: { images: true, slug: true }
+      });
+      if (productRow) {
+        if (productRow.images && productRow.images.length > 0) {
+          productImage = productRow.images[0];
+        }
+        if (!productSlug) {
+          productSlug = productRow.slug;
+        }
+      }
+    }
+  }
+
+  const productUrl = `/tr/product/${productSlug}`;
   const hasProductLink = productSlug.length > 0;
   const productDimensions = asText(productDetails?.dimensions, 'Not provided');
   const specialNotes = asText(productDetails?.notes, 'No special notes');

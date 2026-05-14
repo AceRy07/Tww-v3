@@ -1,5 +1,5 @@
-﻿import { AlertTriangle, Plus } from 'lucide-react';
-import { createDraftProductAction } from '@/lib/actions/inventory-actions';
+﻿import Link from 'next/link';
+import { AlertTriangle, Plus } from 'lucide-react';
 
 import InventoryTableClient from '@/components/admin/InventoryTableClient';
 import { getInventoryItems } from '@/lib/data';
@@ -24,12 +24,10 @@ export default async function AdminInventoryPage() {
           </h1>
         </div>
 
-        <form action={createDraftProductAction as unknown as (payload: FormData) => void}>
-          <button type="submit" className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black">
+        <Link href="/admin/inventory/new/edit" className="inline-flex cursor-pointer list-none items-center gap-2 border border-white bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-black hover:bg-gray-200 transition-colors">
             <Plus className="h-4 w-4" aria-hidden="true" />
             New Product
-          </button>
-        </form>
+          </Link>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">

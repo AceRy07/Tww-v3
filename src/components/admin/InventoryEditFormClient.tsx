@@ -3,7 +3,7 @@
 import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { updateInventoryProductAction } from '@/lib/actions/inventory-actions';
+import { createInventoryProductAction, updateInventoryProductAction } from '@/lib/actions/inventory-actions';
 import ImageManager, { type ManagedProductImage } from '@/components/admin/ImageManager';
 import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
 
@@ -25,22 +25,46 @@ type Product = {
   };
 };
 
+type DbCategory = { name: string; slug: string };
+type DbColor = { name: string; slug: string; hex: string };
+
 type Props = {
   productId: string;
   product: Product;
+  dbCategories?: DbCategory[];
+  dbColors?: DbColor[];
 };
 
-export default function InventoryEditFormClient({ productId, product }: Props) {
+export default function InventoryEditFormClient({ productId, product, dbCategories = [], dbColors = [] }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [hasPendingUploads, setHasPendingUploads] = useState(false);
 
-  const isDraft = product.sku.startsWith('DRAFT-');
+  const isNew = productId === 'new';
+  const isDraft = !isNew && product.sku.startsWith('DRAFT-');
+  const isBlank = isNew || isDraft;
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       setFormError(null);
+
+      if (isNew) {
+        const result = await createInventoryProductAction(formData);
+
+        if (!result || !result.success) {
+          const message = (result as { success: false; message?: string })?.message || 'Ürün oluşturulamadı.';
+          setFormError(message);
+          toast.error(message);
+          return;
+        }
+
+        toast.success('Ürün başarıyla oluşturuldu');
+        const newId = (result as { success: true; data?: { id: string } }).data?.id;
+        router.push(newId ? `/admin/inventory/${newId}/edit` : '/admin/inventory');
+        return;
+      }
+
       const result = await updateInventoryProductAction(productId, formData);
 
       if (result && !result.success) {
@@ -57,18 +81,26 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
 
   return (
     <div className="space-y-8">
-      <ImageManager
-        productId={productId}
-        images={product.productImages}
-        onPendingChange={setHasPendingUploads}
-      />
+      {isNew ? (
+        <div className="border border-dashed border-[#2a2a2a] p-5">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">
+            Görseller ürün kaydedildikten sonra eklenebilir.
+          </p>
+        </div>
+      ) : (
+        <ImageManager
+          productId={productId}
+          images={product.productImages}
+          onPendingChange={setHasPendingUploads}
+        />
+      )}
 
       <form action={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">SKU</span>
           <input
             name="sku"
-            defaultValue={isDraft ? '' : product.sku}
+            defaultValue={isBlank ? '' : product.sku}
             placeholder="TWW-XX-001"
             className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
             required
@@ -79,7 +111,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
           <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Slug</span>
           <input
             name="slug"
-            defaultValue={isDraft ? '' : product.slug}
+            defaultValue={isBlank ? '' : product.slug}
             placeholder="ornek-urun-ismi"
             className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
             required
@@ -93,9 +125,15 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
             defaultValue={product.category}
             className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
           >
-            {CATEGORY_VALUES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+            {dbCategories.length > 0 ? (
+              dbCategories.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
+              ))
+            ) : (
+              CATEGORY_VALUES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))
+            )}
           </select>
         </label>
 
@@ -104,11 +142,24 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
           <select
             name="color"
             defaultValue={product.color}
+            onChange={(e) => {
+              const selectedColor = dbColors.find(c => c.slug === e.target.value);
+              if (selectedColor) {
+                const hexInput = document.querySelector('input[name="colorHex"]') as HTMLInputElement;
+                if (hexInput) hexInput.value = selectedColor.hex;
+              }
+            }}
             className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
           >
-            {COLOR_VALUES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+            {dbColors.length > 0 ? (
+              dbColors.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
+              ))
+            ) : (
+              COLOR_VALUES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))
+            )}
           </select>
         </label>
 
@@ -119,7 +170,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
             type="number"
             step="0.01"
             min="0"
-            defaultValue={isDraft ? '' : product.price}
+            defaultValue={isBlank ? '' : product.price}
             placeholder="0.00"
             className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
             required
@@ -132,7 +183,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
             name="stock"
             type="number"
             min="0"
-            defaultValue={isDraft ? '' : product.stock}
+            defaultValue={isBlank ? '' : product.stock}
             placeholder="0"
             className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
             required
@@ -143,7 +194,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
           <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Renk Kodu (Hex)</span>
           <input
             name="colorHex"
-            defaultValue={isDraft ? '' : product.colorHex}
+            defaultValue={isBlank ? '' : product.colorHex}
             placeholder="#383838"
             className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
             required
@@ -164,7 +215,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               name="width"
               type="number"
               min="1"
-              defaultValue={isDraft ? '' : product.dimensions.width}
+              defaultValue={isBlank ? '' : product.dimensions.width}
               placeholder="G"
               className="min-h-10 w-full border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
               required
@@ -176,7 +227,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               name="height"
               type="number"
               min="1"
-              defaultValue={isDraft ? '' : product.dimensions.height}
+              defaultValue={isBlank ? '' : product.dimensions.height}
               placeholder="Y"
               className="min-h-10 w-full border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
               required
@@ -188,7 +239,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               name="depth"
               type="number"
               min="1"
-              defaultValue={isDraft ? '' : product.dimensions.depth}
+              defaultValue={isBlank ? '' : product.dimensions.depth}
               placeholder="D"
               className="min-h-10 w-full border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
               required
@@ -203,7 +254,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Ürün Adı (TR)</span>
               <input
                 name="nameTr"
-                defaultValue={isDraft ? '' : product.translations.tr.name}
+                defaultValue={isBlank ? '' : product.translations.tr.name}
                 placeholder="Örn: Siyah Yemek Masası"
                 className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -213,7 +264,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Materyal (TR)</span>
               <input
                 name="materialTr"
-                defaultValue={isDraft ? '' : product.translations.tr.material}
+                defaultValue={isBlank ? '' : product.translations.tr.material}
                 placeholder="Örn: Masif Ahşap ve Demir"
                 className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -223,7 +274,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Açıklama (TR)</span>
               <textarea
                 name="descriptionTr"
-                defaultValue={isDraft ? '' : product.translations.tr.description}
+                defaultValue={isBlank ? '' : product.translations.tr.description}
                 placeholder="Ürünün detaylı açıklaması..."
                 className="min-h-20 border border-[#2a2a2a] bg-transparent px-3 py-2 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -239,7 +290,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Product Name (EN)</span>
               <input
                 name="nameEn"
-                defaultValue={isDraft ? '' : product.translations.en.name}
+                defaultValue={isBlank ? '' : product.translations.en.name}
                 placeholder="e.g. Black Dining Table"
                 className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -249,7 +300,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Material (EN)</span>
               <input
                 name="materialEn"
-                defaultValue={isDraft ? '' : product.translations.en.material}
+                defaultValue={isBlank ? '' : product.translations.en.material}
                 placeholder="e.g. Solid Wood and Iron"
                 className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -259,7 +310,7 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Description (EN)</span>
               <textarea
                 name="descriptionEn"
-                defaultValue={isDraft ? '' : product.translations.en.description}
+                defaultValue={isBlank ? '' : product.translations.en.description}
                 placeholder="Detailed description of the product..."
                 className="min-h-20 border border-[#2a2a2a] bg-transparent px-3 py-2 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
                 required
@@ -291,7 +342,11 @@ export default function InventoryEditFormClient({ productId, product }: Props) {
               disabled={isPending || hasPendingUploads}
               className="inline-flex min-h-10 items-center justify-center border border-white bg-white px-5 text-xs font-semibold uppercase tracking-[0.1em] text-black disabled:cursor-not-allowed disabled:opacity-60 transition-colors hover:bg-gray-200"
             >
-              {isPending ? 'Kaydediliyor...' : hasPendingUploads ? 'Gorseller Yukleniyor...' : 'Save Product'}
+              {isPending
+                ? isNew ? 'Oluşturuluyor...' : 'Kaydediliyor...'
+                : hasPendingUploads
+                ? 'Gorseller Yukleniyor...'
+                : isNew ? 'Create Product' : 'Save Product'}
             </button>
           </div>
         </div>

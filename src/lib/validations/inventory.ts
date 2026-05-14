@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
 
 export const inventoryProductSchema = z.object({
   sku: z.string().trim().min(3).max(64),
@@ -9,10 +8,10 @@ export const inventoryProductSchema = z.object({
     .min(3)
     .max(160)
     .regex(/^[a-z0-9-]+$/),
-  category: z.enum(CATEGORY_VALUES),
+  category: z.string().min(1, "Category is required"),
   price: z.coerce.number().positive(),
   stock: z.coerce.number().int().min(0),
-  color: z.enum(COLOR_VALUES),
+  color: z.string().min(1, "Color is required"),
   colorHex: z.string().trim().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
   width: z.coerce.number().positive(),
   height: z.coerce.number().positive(),

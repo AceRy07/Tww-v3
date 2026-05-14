@@ -23,9 +23,10 @@ const createColorSchema = z.object({
   hex: z.string().regex(hexRegex, 'Invalid hex color.'),
 });
 
-const updateColorNameSchema = z.object({
+const updateColorSchema = z.object({
   id: z.string().uuid(),
-  newName: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
+  hex: z.string().regex(hexRegex, 'Invalid hex color.'),
 });
 
 const updateColorStatusSchema = z.object({
@@ -85,6 +86,7 @@ async function ensureUniqueColorSlug(baseName: string) {
 }
 
 function revalidateColorPaths() {
+  revalidatePath('/admin/settings');
   revalidatePath('/admin/inventory');
   revalidatePath('/en/catalog');
   revalidatePath('/tr/catalog');
@@ -143,12 +145,13 @@ export async function createColorAction(input: {
   });
 }
 
-export async function updateColorNameAction(
+export async function updateColorAction(
   id: string,
-  newName: string
+  name: string,
+  hex: string
 ): Promise<ColorActionResult> {
   return await withAdmin(async () => {
-    const parsed = updateColorNameSchema.safeParse({ id, newName });
+    const parsed = updateColorSchema.safeParse({ id, name, hex });
     if (!parsed.success) {
       return { success: false, message: 'Gecersiz renk guncelleme verisi.' };
     }
@@ -156,7 +159,7 @@ export async function updateColorNameAction(
     try {
       const updated = await db
         .update(colors)
-        .set({ name: parsed.data.newName })
+        .set({ name: parsed.data.name, hex: parsed.data.hex.toUpperCase() })
         .where(eq(colors.id, parsed.data.id))
         .returning({ id: colors.id });
 
@@ -168,8 +171,8 @@ export async function updateColorNameAction(
 
       return { success: true };
     } catch (error) {
-      console.error('[actions/updateColorNameAction] Unexpected error:', error);
-      return { success: false, message: 'Renk adi guncellenemedi.' };
+      console.error('[actions/updateColorAction] Unexpected error:', error);
+      return { success: false, message: 'Renk guncellenemedi.' };
     }
   });
 }

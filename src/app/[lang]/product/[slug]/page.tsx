@@ -136,7 +136,7 @@ export default async function ProductRedirectPage({ params }: Props) {
                   ? "Bu urunle ilgileniyorsaniz talebinizi iletin, 24 saat icinde size donelim."
                   : "Interested in this product? Send us an inquiry and we'll get back to you within 24 hours."}
               </p>
-              <InquiryForm productName={product.title} productSku={product.sku} productSlug={product.slug} />
+              <InquiryForm productName={product.title} productSku={product.sku} productSlug={product.slug} primaryImageUrl={product.images?.[0]} />
             </div>
           </div>
         </div>

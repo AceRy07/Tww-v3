@@ -31,9 +31,10 @@ interface InquiryFormProps {
   productName: string;
   productSku: string;
   productSlug: string;
+  primaryImageUrl?: string;
 }
 
-export default function InquiryForm({ productName, productSku, productSlug }: InquiryFormProps) {
+export default function InquiryForm({ productName, productSku, productSlug, primaryImageUrl }: InquiryFormProps) {
   const { locale, dictionary } = useLanguage();
   const schema = createSchema(dictionary.inquiry.errors);
   const [submitted, setSubmitted] = useState(false);
@@ -51,7 +52,7 @@ export default function InquiryForm({ productName, productSku, productSlug }: In
   const onSubmit = async (data: FormData) => {
     setServerError(null);
     try {
-      const result = await submitInquiry({ ...data, productName, productSku, productSlug, locale });
+      const result = await submitInquiry({ ...data, productName, productSku, productSlug, primaryImageUrl, locale });
 
       if ('error' in result) {
         throw new Error(result.error);

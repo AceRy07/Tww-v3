@@ -5,6 +5,12 @@ import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+function getSafeIsoDate(dateVal: any): string {
+  if (!dateVal) return new Date().toISOString();
+  const d = new Date(dateVal);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
 export default async function AdminSettingsPage() {
   let categoryRows: Array<typeof categories.$inferSelect> = [];
   let colorRows: Array<typeof colors.$inferSelect> = [];
@@ -31,11 +37,11 @@ export default async function AdminSettingsPage() {
       <SettingsFiltersClient
         initialCategories={categoryRows.map((item) => ({
           ...item,
-          createdAt: new Date(item.createdAt).toISOString(),
+          createdAt: getSafeIsoDate(item.createdAt),
         }))}
         initialColors={colorRows.map((item) => ({
           ...item,
-          createdAt: new Date(item.createdAt).toISOString(),
+          createdAt: getSafeIsoDate(item.createdAt),
         }))}
       />
     </section>
