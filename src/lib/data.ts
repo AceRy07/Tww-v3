@@ -553,6 +553,7 @@ export async function createInventoryProduct(
           dimensions: input.dimensions,
           images: input.images,
           featured: input.featured,
+          createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning({ id: products.id });
