@@ -47,35 +47,42 @@ export default function InventoryEditFormClient({ productId, product, dbCategori
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      setFormError(null);
+      try {
+        setFormError(null);
 
-      if (isNew) {
-        const result = await createInventoryProductAction(formData);
+        if (isNew) {
+          const result = await createInventoryProductAction(formData);
 
-        if (!result || !result.success) {
-          const message = (result as { success: false; message?: string })?.message || 'Ürün oluşturulamadı.';
+          if (!result || !result.success) {
+            const message = (result as { success: false; message?: string })?.message || 'Ürün oluşturulamadı.';
+            setFormError(message);
+            toast.error(message);
+            return;
+          }
+
+          toast.success('Ürün başarıyla oluşturuldu');
+          const newId = (result as { success: true; data?: { id: string } }).data?.id;
+          router.push(newId ? `/admin/inventory/${newId}/edit` : '/admin/inventory');
+          return;
+        }
+
+        const result = await updateInventoryProductAction(productId, formData);
+
+        if (result && !result.success) {
+          const message = result.message || 'Ürün güncellenemedi.';
           setFormError(message);
           toast.error(message);
           return;
         }
 
-        toast.success('Ürün başarıyla oluşturuldu');
-        const newId = (result as { success: true; data?: { id: string } }).data?.id;
-        router.push(newId ? `/admin/inventory/${newId}/edit` : '/admin/inventory');
-        return;
+        toast.success('Ürün başarıyla kaydedildi');
+        router.push('/admin/inventory');
+      } catch (error) {
+        console.error('[InventoryEditFormClient] Form submission error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Sunucu ile bağlantı kurulamadı.';
+        setFormError(errorMessage);
+        toast.error(errorMessage);
       }
-
-      const result = await updateInventoryProductAction(productId, formData);
-
-      if (result && !result.success) {
-        const message = result.message || 'Ürün güncellenemedi.';
-        setFormError(message);
-        toast.error(message);
-        return;
-      }
-
-      toast.success('Ürün başarıyla kaydedildi');
-      router.push('/admin/inventory');
     });
   }
 
