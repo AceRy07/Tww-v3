@@ -48,9 +48,6 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
       status: 'pending',
       productDetails: {
         product: `${productName} (${productSku})`,
-        productName,
-        productSlug,
-        productImage: primaryImageUrl ?? '',
         dimensions: requestedDimensions ?? '',
         notes: message,
       },
