@@ -6,12 +6,14 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createInventoryProductAction } from '@/lib/actions/inventory-actions';
 import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
+import { PRICE_TYPE_LABELS, PRODUCT_PRICE_TYPES, type ProductPriceType } from '@/lib/pricing';
 
 export default function InventoryCreateFormClient() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSubmitting, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
+  const [priceType, setPriceType] = useState<ProductPriceType>('fixed');
 
   async function handleCreateInventoryProduct(formData: FormData) {
     // Action sonucunu istemci tarafinda yakalayip hem toast hem de inline hata state'i uretiyoruz.
@@ -67,7 +69,36 @@ export default function InventoryCreateFormClient() {
           ))}
         </select>
 
-        <input name="price" type="number" step="0.01" min="0" placeholder="Price" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
+        <select
+          name="priceType"
+          value={priceType}
+          onChange={(event) => setPriceType(event.target.value as ProductPriceType)}
+          className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white"
+        >
+          {PRODUCT_PRICE_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {PRICE_TYPE_LABELS[type].en}
+            </option>
+          ))}
+        </select>
+
+        <div className="grid grid-cols-[1fr_96px] gap-2">
+          <input
+            name="price"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder={priceType === 'request_quote' ? 'Price optional' : 'Price'}
+            className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white disabled:opacity-50"
+            required={priceType !== 'request_quote'}
+            disabled={priceType === 'request_quote'}
+          />
+          <select name="currency" className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white" defaultValue="TRY">
+            <option value="TRY">TRY</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+
         <input name="stock" type="number" min="0" placeholder="Stock" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         <input name="colorHex" placeholder="#383838" className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white" required />
         

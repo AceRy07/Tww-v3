@@ -9,16 +9,27 @@ import { inquiries } from '@/db/schema';
 import { hasLocale } from '@/i18n/config';
 import { requireAdmin } from '@/lib/auth';
 import { INQUIRY_STATUSES, type InquiryStatus } from '@/lib/inquiry-status';
+import {
+  DEFAULT_PRODUCT_CURRENCY,
+  PRODUCT_PRICE_TYPES,
+  type ProductCurrency,
+  type ProductPriceType,
+} from '@/lib/pricing';
 
 const inquirySchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
   requestedDimensions: z.string().max(200).optional(),
   message: z.string().min(10).max(2000),
+  productId: z.string().uuid().optional(),
   productName: z.string().max(200),
   productSku: z.string().max(50),
   productSlug: z.string().max(100),
   primaryImageUrl: z.string().max(2000).optional(),
+  priceType: z.enum(PRODUCT_PRICE_TYPES),
+  displayedPrice: z.number().positive().nullable().optional(),
+  currency: z.enum(['TRY', 'USD']).default(DEFAULT_PRODUCT_CURRENCY),
+  displayedPriceText: z.string().max(200).optional(),
   locale: z.string().optional(),
 });
 
@@ -30,14 +41,37 @@ const inquiryStatusSchema = z.object({
   status: z.enum(INQUIRY_STATUSES),
 });
 
+const quoteSchema = z.object({
+  id: z.string().uuid(),
+  quotedPrice: z.coerce.number().positive().nullable().optional(),
+  quotedCurrency: z.enum(['TRY', 'USD']).default(DEFAULT_PRODUCT_CURRENCY),
+  estimatedDeliveryDays: z.coerce.number().int().positive().nullable().optional(),
+  quoteNote: z.string().max(2000).optional(),
+  markAsQuoted: z.boolean().optional(),
+});
+
 export async function submitInquiry(input: InquiryActionInput): Promise<InquiryActionResult> {
   const result = inquirySchema.safeParse(input);
   if (!result.success) {
     return { error: 'Invalid form data.' };
   }
 
-  const { name, email, requestedDimensions, message, productName, productSku, productSlug, locale } =
-    result.data;
+  const {
+    name,
+    email,
+    requestedDimensions,
+    message,
+    productId,
+    productName,
+    productSku,
+    productSlug,
+    primaryImageUrl,
+    priceType,
+    displayedPrice,
+    currency,
+    displayedPriceText,
+    locale,
+  } = result.data;
 
   const resolvedLocale = locale && hasLocale(locale) ? locale : 'en';
   const isTr = resolvedLocale === 'tr';
@@ -49,9 +83,20 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
       customerEmail: email,
       status: 'pending',
       productDetails: {
+        productId,
+        productName,
+        productSlug,
+        productImage: primaryImageUrl,
+        sku: productSku,
         product: `${productName} (${productSku})`,
         dimensions: requestedDimensions ?? '',
+        requestedDimensions: requestedDimensions ?? '',
         notes: message,
+        customerNotes: message,
+        priceType: priceType as ProductPriceType,
+        displayedPrice: displayedPrice ?? null,
+        currency: currency as ProductCurrency,
+        displayedPriceText: displayedPriceText ?? '',
       },
     });
   } catch (err) {
@@ -215,5 +260,56 @@ export async function updateInquiryStatus(input: {
   } catch (err) {
     console.error('[updateInquiryStatus] Failed to update inquiry status:', err);
     return { error: 'Failed to update inquiry status.' };
+  }
+}
+
+export async function saveInquiryQuote(input: z.input<typeof quoteSchema>): Promise<InquiryActionResult> {
+  await requireAdmin();
+
+  const parsed = quoteSchema.safeParse({
+    ...input,
+    quotedPrice: input.quotedPrice === undefined || input.quotedPrice === null ? null : input.quotedPrice,
+    estimatedDeliveryDays:
+      input.estimatedDeliveryDays === undefined || input.estimatedDeliveryDays === null
+        ? null
+        : input.estimatedDeliveryDays,
+  });
+
+  if (!parsed.success) {
+    return { error: 'Invalid quote payload.' };
+  }
+
+  try {
+    const updateValues: Partial<typeof inquiries.$inferInsert> = {
+      quotedPrice:
+        parsed.data.quotedPrice === null || parsed.data.quotedPrice === undefined
+          ? null
+          : String(parsed.data.quotedPrice),
+      quotedCurrency: parsed.data.quotedCurrency,
+      estimatedDeliveryDays: parsed.data.estimatedDeliveryDays ?? null,
+      quoteNote: parsed.data.quoteNote?.trim() || null,
+    };
+
+    if (parsed.data.markAsQuoted) {
+      updateValues.status = 'quoted';
+    }
+
+    const updated = await db
+      .update(inquiries)
+      .set(updateValues)
+      .where(eq(inquiries.id, parsed.data.id))
+      .returning({ id: inquiries.id });
+
+    if (updated.length === 0) {
+      return { error: 'Inquiry not found.' };
+    }
+
+    revalidatePath('/admin/inquiries');
+    revalidatePath(`/admin/inquiries/${parsed.data.id}`);
+
+    return { success: true };
+  } catch (err) {
+    console.error('[saveInquiryQuote] Failed to save inquiry quote:', err);
+    return { error: 'Failed to save quote.' };
   }
 }

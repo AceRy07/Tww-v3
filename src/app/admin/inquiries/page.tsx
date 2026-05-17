@@ -7,6 +7,7 @@ import InquiryPipelineBoard, {
   type InquiryPipelineItem,
 } from '@/components/admin/InquiryPipelineBoard';
 import { normalizeInquiryStatus } from '@/lib/inquiry-status';
+import { normalizeCurrency } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,8 @@ export default async function AdminInquiriesPage() {
       row.productDetails && typeof row.productDetails === 'object'
         ? row.productDetails
         : null,
+    quotedPrice: row.quotedPrice,
+    quotedCurrency: normalizeCurrency(row.quotedCurrency),
     createdAt: row.createdAt?.toISOString() ?? null,
   })) satisfies InquiryPipelineItem[];
 

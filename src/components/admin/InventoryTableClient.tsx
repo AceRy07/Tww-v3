@@ -7,6 +7,7 @@ import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteInventoryProductAction } from '@/lib/actions/inventory-actions';
 import type { InventoryItem } from '@/lib/data';
+import { getInventoryPriceDisplay } from '@/lib/pricing';
 
 type InventoryTableClientProps = {
   inventoryItems: InventoryItem[];
@@ -18,14 +19,6 @@ function toLabelCase(value: string): string {
     .split('-')
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(' ');
-}
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price);
 }
 
 export default function InventoryTableClient({ inventoryItems, lowStockThreshold }: InventoryTableClientProps) {
@@ -123,7 +116,13 @@ export default function InventoryTableClient({ inventoryItems, lowStockThreshold
 
                 <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">{toLabelCase(item.category)}</p>
 
-                <p className="text-sm font-medium text-white">{formatPrice(item.price)}</p>
+                <p className="text-sm font-medium text-white">
+                  {getInventoryPriceDisplay({
+                    priceType: item.priceType,
+                    price: item.price,
+                    currency: item.currency,
+                  })}
+                </p>
 
                 <div>
                   {isLowStock ? (

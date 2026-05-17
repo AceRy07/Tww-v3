@@ -6,6 +6,11 @@ import { ArrowLeft, Layers, Ruler, Tag } from "lucide-react";
 import InquiryForm from "@/components/forms/InquiryForm";
 import { getAllProductSlugs, getProductBySlug } from "@/lib/data";
 import { hasLocale, locales } from "@/i18n/config";
+import {
+  PRICE_COPY,
+  formatProductPrice,
+  getProductPriceDisplay,
+} from "@/lib/pricing";
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
@@ -41,6 +46,12 @@ export default async function ProductRedirectPage({ params }: Props) {
 
   const product = await getProductBySlug(slug, lang);
   if (!product) notFound();
+  const priceDisplayText = getProductPriceDisplay({
+    priceType: product.priceType,
+    price: product.price,
+    currency: product.currency,
+    locale: lang,
+  });
 
   return (
     <div className="min-h-screen pt-16">
@@ -83,13 +94,36 @@ export default async function ProductRedirectPage({ params }: Props) {
                 {product.categoryLabel}
               </span>
               <h1 className="mb-4 text-4xl font-semibold tracking-tight text-foreground">{product.title}</h1>
-              <p className="mb-6 text-2xl font-medium text-foreground">
-                {product.price.toLocaleString(lang === "tr" ? "tr-TR" : "en-US", {
-                  style: "currency",
-                  currency: "TRY",
-                  maximumFractionDigits: 0,
-                })}
-              </p>
+              <div className="mb-6">
+                {product.priceType === "request_quote" ? (
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {PRICE_COPY.customPricingTitle[lang]}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {PRICE_COPY.customPricingBody[lang]}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {product.priceType === "starting_from" ? (
+                      <p className="mb-2 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {PRICE_COPY.startingFrom[lang]}
+                      </p>
+                    ) : null}
+                    <p className="text-2xl font-medium text-foreground">
+                      {product.priceType === "starting_from"
+                        ? formatProductPrice(product.price, product.currency, lang)
+                        : priceDisplayText}
+                    </p>
+                    {product.priceType === "starting_from" ? (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {PRICE_COPY.startingFromHelper[lang]}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
               <p className="leading-relaxed text-muted-foreground">{product.description}</p>
             </div>
 
@@ -136,7 +170,17 @@ export default async function ProductRedirectPage({ params }: Props) {
                   ? "Bu urunle ilgileniyorsaniz talebinizi iletin, 24 saat icinde size donelim."
                   : "Interested in this product? Send us an inquiry and we'll get back to you within 24 hours."}
               </p>
-              <InquiryForm productName={product.title} productSku={product.sku} productSlug={product.slug} primaryImageUrl={product.images?.[0]} />
+              <InquiryForm
+                productId={product.id}
+                productName={product.title}
+                productSku={product.sku}
+                productSlug={product.slug}
+                primaryImageUrl={product.images?.[0]}
+                priceType={product.priceType}
+                displayedPrice={product.price}
+                currency={product.currency}
+                displayedPriceText={priceDisplayText}
+              />
             </div>
           </div>
         </div>

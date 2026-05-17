@@ -10,6 +10,12 @@ import {
   type CategoryKey,
   type Color,
 } from '@/lib/product-config';
+import {
+  normalizeCurrency,
+  normalizeProductPriceType,
+  type ProductCurrency,
+  type ProductPriceType,
+} from '@/lib/pricing';
 
 export type { CategoryKey, Color };
 export { COLORS, getCategoryOptions } from '@/lib/product-config';
@@ -25,7 +31,9 @@ export type Product = {
   title: string;
   category: string;
   categoryLabel: string;
-  price: number;
+  priceType: ProductPriceType;
+  price: number | null;
+  currency: ProductCurrency;
   material: string;
   color: string;
   colorHex: string;
@@ -42,7 +50,9 @@ export type Product = {
 export type InventoryItem = {
   id: string;
   sku: string;
-  price: number;
+  priceType: ProductPriceType;
+  price: number | null;
+  currency: ProductCurrency;
   stock: number;
   category: string;
   slug: string;
@@ -55,7 +65,9 @@ export type CreateInventoryProductInput = {
   sku: string;
   slug: string;
   category: string;
-  price: number;
+  priceType: ProductPriceType;
+  price: number | null;
+  currency: ProductCurrency;
   stock: number;
   color: string;
   colorHex: string;
@@ -87,7 +99,9 @@ export type InventoryProductForEdit = {
   sku: string;
   slug: string;
   category: string;
-  price: number;
+  priceType: ProductPriceType;
+  price: number | null;
+  currency: ProductCurrency;
   stock: number;
   color: string;
   colorHex: string;
@@ -134,7 +148,9 @@ type ProductQueryRow = {
   slug: string;
   sku: string;
   category: string;
-  price: string;
+  priceType: ProductPriceType;
+  price: string | null;
+  currency: ProductCurrency;
   color: string;
   colorHex: string;
   dimensions: { width: number; height: number; depth: number };
@@ -148,7 +164,9 @@ type ProductQueryRow = {
 type InventoryQueryRow = {
   id: string;
   sku: string;
-  price: string;
+  priceType: ProductPriceType;
+  price: string | null;
+  currency: ProductCurrency;
   stock: number;
   category: string;
   slug: string;
@@ -168,12 +186,14 @@ type DbErrorShape = {
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-function parsePrice(value: string | number): number {
-  return typeof value === 'number' ? value : Number(value);
+function parsePrice(value: string | number | null): number | null {
+  if (value === null) return null;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toDbPrice(value: number): string {
-  return String(value);
+function toDbPrice(value: number | null): string | null {
+  return value === null ? null : String(value);
 }
 
 function toObject(value: unknown): Record<string, unknown> | null {
@@ -314,7 +334,9 @@ function mapToProduct(row: ProductQueryRow, locale: Locale): Product | null {
     title: row.title,
     category: row.category,
     categoryLabel,
+    priceType: normalizeProductPriceType(row.priceType),
     price: parsePrice(row.price),
+    currency: normalizeCurrency(row.currency),
     material: row.material,
     color: row.color,
     colorHex: row.colorHex,
@@ -329,7 +351,9 @@ function mapToInventoryItem(row: InventoryQueryRow): InventoryItem {
   return {
     id: row.id,
     sku: row.sku,
+    priceType: normalizeProductPriceType(row.priceType),
     price: parsePrice(row.price),
+    currency: normalizeCurrency(row.currency),
     stock: row.stock,
     category: row.category,
     slug: row.slug,
@@ -345,7 +369,9 @@ function buildProductSelect() {
     slug: products.slug,
     sku: products.sku,
     category: products.category,
+    priceType: products.priceType,
     price: products.price,
+    currency: products.currency,
     color: products.color,
     colorHex: products.colorHex,
     dimensions: products.dimensions,
@@ -361,7 +387,9 @@ function buildInventorySelect() {
   return {
     id: products.id,
     sku: products.sku,
+    priceType: products.priceType,
     price: products.price,
+    currency: products.currency,
     stock: products.stock,
     category: products.category,
     slug: products.slug,
@@ -543,10 +571,12 @@ export async function createInventoryProduct(
       const productData = {
         sku: input.sku,
         slug: input.slug,
-        category: input.category as any,
+        category: input.category as CategoryKey,
+        priceType: input.priceType,
         price: toDbPrice(input.price),
+        currency: input.currency,
         stock: input.stock,
-        color: input.color as any,
+        color: input.color as Color,
         colorHex: input.colorHex,
         dimensions: input.dimensions,
         images: input.images,
@@ -615,7 +645,9 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
         sku: products.sku,
         slug: products.slug,
         category: products.category,
+        priceType: products.priceType,
         price: products.price,
+        currency: products.currency,
         stock: products.stock,
         color: products.color,
         colorHex: products.colorHex,
@@ -662,7 +694,9 @@ export async function getInventoryProductForEdit(productId: string): Promise<Inv
       sku: productRow.sku,
       slug: productRow.slug,
       category: productRow.category,
+      priceType: normalizeProductPriceType(productRow.priceType),
       price: parsePrice(productRow.price),
+      currency: normalizeCurrency(productRow.currency),
       stock: productRow.stock,
       color: productRow.color,
       colorHex: productRow.colorHex,
@@ -703,10 +737,12 @@ export async function updateInventoryProduct(
         .set({
           sku: input.sku,
           slug: input.slug,
-          category: input.category as any,
+          category: input.category as CategoryKey,
+          priceType: input.priceType,
           price: toDbPrice(input.price),
+          currency: input.currency,
           stock: input.stock,
-          color: input.color as any,
+          color: input.color as Color,
           colorHex: input.colorHex,
           dimensions: input.dimensions,
           images: input.images,

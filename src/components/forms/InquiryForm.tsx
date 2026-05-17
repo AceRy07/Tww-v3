@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Send, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 import { submitInquiry } from '@/lib/actions/inquiry-actions';
+import type { ProductCurrency, ProductPriceType } from '@/lib/pricing';
 
 const createSchema = (errors: {
   nameShort: string;
@@ -28,13 +29,28 @@ type FormData = {
 };
 
 interface InquiryFormProps {
+  productId?: string;
   productName: string;
   productSku: string;
   productSlug: string;
   primaryImageUrl?: string;
+  priceType?: ProductPriceType;
+  displayedPrice?: number | null;
+  currency?: ProductCurrency;
+  displayedPriceText?: string;
 }
 
-export default function InquiryForm({ productName, productSku, productSlug, primaryImageUrl }: InquiryFormProps) {
+export default function InquiryForm({
+  productId,
+  productName,
+  productSku,
+  productSlug,
+  primaryImageUrl,
+  priceType = 'request_quote',
+  displayedPrice = null,
+  currency = 'TRY',
+  displayedPriceText = '',
+}: InquiryFormProps) {
   const { locale, dictionary } = useLanguage();
   const schema = createSchema(dictionary.inquiry.errors);
   const [submitted, setSubmitted] = useState(false);
@@ -52,7 +68,19 @@ export default function InquiryForm({ productName, productSku, productSlug, prim
   const onSubmit = async (data: FormData) => {
     setServerError(null);
     try {
-      const result = await submitInquiry({ ...data, productName, productSku, productSlug, primaryImageUrl, locale });
+      const result = await submitInquiry({
+        ...data,
+        productId,
+        productName,
+        productSku,
+        productSlug,
+        primaryImageUrl,
+        priceType,
+        displayedPrice,
+        currency,
+        displayedPriceText,
+        locale,
+      });
 
       if ('error' in result) {
         throw new Error(result.error);

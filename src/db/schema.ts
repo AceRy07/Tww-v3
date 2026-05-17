@@ -14,8 +14,14 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { CategoryKey, Color } from '@/lib/product-config';
+import type { ProductCurrency, ProductPriceType } from '@/lib/pricing';
 
 export const languageCodeEnum = pgEnum('language_code', ['tr', 'en']);
+export const productPriceTypeEnum = pgEnum('product_price_type', [
+  'fixed',
+  'starting_from',
+  'request_quote',
+]);
 
 export const categories = pgTable('categories', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -43,7 +49,9 @@ export const products = pgTable(
     sku: text('sku').notNull().unique(),
     slug: text('slug').notNull().unique(),
     category: text('category').$type<CategoryKey>().notNull(),
-    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+    priceType: productPriceTypeEnum('price_type').$type<ProductPriceType>().notNull().default('fixed'),
+    price: numeric('price', { precision: 10, scale: 2 }),
+    currency: text('currency').$type<ProductCurrency>().notNull().default('TRY'),
     stock: integer('stock').notNull().default(0),
     color: text('color').$type<Color>().notNull(),
     colorHex: text('color_hex').notNull(),
@@ -134,10 +142,25 @@ export const inquiries = pgTable('inquiries', {
   customerEmail: text('customer_email').notNull(),
   status: inquiryStatusEnum('status').default('pending'),
   productDetails: jsonb('product_details').$type<{
+    productId?: string;
+    productName?: string;
+    productSlug?: string;
+    productImage?: string;
+    sku?: string;
     product?: string;
     dimensions?: string;
+    requestedDimensions?: string | Record<string, string>;
     notes?: string;
+    customerNotes?: string;
+    priceType?: ProductPriceType;
+    displayedPrice?: number | null;
+    currency?: ProductCurrency;
+    displayedPriceText?: string;
   }>(),
+  quotedPrice: numeric('quoted_price', { precision: 10, scale: 2 }),
+  quotedCurrency: text('quoted_currency').$type<ProductCurrency>().notNull().default('TRY'),
+  estimatedDeliveryDays: integer('estimated_delivery_days'),
+  quoteNote: text('quote_note'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

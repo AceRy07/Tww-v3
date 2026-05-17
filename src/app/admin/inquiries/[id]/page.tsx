@@ -7,12 +7,19 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
 import { inquiries, products } from '@/db/schema';
+import InquiryQuoteForm from '@/components/admin/InquiryQuoteForm';
 import InquiryStatusActions from '@/components/admin/InquiryStatusActions';
 import {
   INQUIRY_STATUS_LABELS,
   INQUIRY_STATUS_META,
   normalizeInquiryStatus,
 } from '@/lib/inquiry-status';
+import {
+  PRICE_TYPE_LABELS,
+  formatProductPrice,
+  normalizeCurrency,
+  normalizeProductPriceType,
+} from '@/lib/pricing';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -23,9 +30,16 @@ interface InquiryProductDetails {
   productSlug?: string;
   productImage?: string;
   dimensions?: string;
+  requestedDimensions?: string | Record<string, string>;
   productId?: string;
+  sku?: string;
   notes?: string;
+  customerNotes?: string;
   product?: string;
+  priceType?: string;
+  displayedPrice?: number | null;
+  currency?: string;
+  displayedPriceText?: string;
 }
 
 export const dynamic = 'force-dynamic';
@@ -107,6 +121,13 @@ export default async function AdminInquiryDetailPage({ params }: PageProps) {
   const productDimensions = asText(productDetails?.dimensions, 'Not provided');
   const specialNotes = asText(productDetails?.notes, 'No special notes');
   const messageContent = asText(productDetails?.notes, 'No message content');
+  const priceType = normalizeProductPriceType(productDetails?.priceType);
+  const snapshotCurrency = normalizeCurrency(productDetails?.currency);
+  const snapshotPriceText = asText(productDetails?.displayedPriceText, 'TBD');
+  const quotedCurrency = normalizeCurrency(inquiry.quotedCurrency);
+  const quotedPriceText = inquiry.quotedPrice
+    ? formatProductPrice(Number(inquiry.quotedPrice), quotedCurrency, 'tr')
+    : 'TBD';
   const status = normalizeInquiryStatus(inquiry.status);
   const statusMeta = INQUIRY_STATUS_META[status];
   const statusLabel = INQUIRY_STATUS_LABELS[status];
@@ -241,7 +262,36 @@ export default async function AdminInquiryDetailPage({ params }: PageProps) {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">Special Notes</p>
                 <p className="mt-2 whitespace-pre-wrap break-words text-[16px] text-white">{specialNotes}</p>
               </div>
+              <div className="min-h-20 bg-[#0e0e0e] p-4 sm:col-span-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">Price Snapshot</p>
+                <p className="mt-2 text-[20px] font-medium text-white">{snapshotPriceText}</p>
+                <p className="mt-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">
+                  {PRICE_TYPE_LABELS[priceType].en} / {snapshotCurrency}
+                </p>
+              </div>
             </div>
+          </article>
+
+          <article className="border border-[#2a2a2a] bg-[#0e0e0e] p-6 md:p-8">
+            <h3 className="border-b border-[#2a2a2a] pb-4 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">
+              Quote / Pricing
+            </h3>
+            <div className="mt-6 border border-[#2a2a2a] bg-[#121212] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">Current Quote</p>
+              <p className="mt-2 text-[24px] font-medium text-white">{quotedPriceText}</p>
+              {inquiry.estimatedDeliveryDays ? (
+                <p className="mt-1 text-[13px] text-[#c4c7c8]">
+                  Estimated delivery: {inquiry.estimatedDeliveryDays} days
+                </p>
+              ) : null}
+            </div>
+            <InquiryQuoteForm
+              inquiryId={inquiry.id}
+              quotedPrice={inquiry.quotedPrice}
+              quotedCurrency={quotedCurrency}
+              estimatedDeliveryDays={inquiry.estimatedDeliveryDays}
+              quoteNote={inquiry.quoteNote}
+            />
           </article>
 
           <article className="border border-[#2a2a2a] bg-[#0e0e0e] p-6 md:p-8">

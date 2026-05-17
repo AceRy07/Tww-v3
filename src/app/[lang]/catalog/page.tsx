@@ -28,6 +28,7 @@ interface CatalogPageProps {
     maxHeight?: string;
     minDepth?: string;
     maxDepth?: string;
+    showPriceOnRequest?: string;
   }>;
 }
 
@@ -49,6 +50,8 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
 
   const minPrice = Number(queryParams.minPrice ?? 0);
   const maxPrice = Number(queryParams.maxPrice ?? Infinity);
+  const hasPriceRange = minPrice > 0 || Boolean(queryParams.maxPrice);
+  const showPriceOnRequest = queryParams.showPriceOnRequest !== "false";
   const minWidth = Number(queryParams.minWidth ?? 0);
   const maxWidth = Number(queryParams.maxWidth ?? Infinity);
   const minHeight = Number(queryParams.minHeight ?? 0);
@@ -72,8 +75,15 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
 
     if (categories.length && !categories.includes(p.category)) return false;
     if (colors.length && !colors.includes(p.color)) return false;
-    if (p.price < minPrice) return false;
-    if (queryParams.maxPrice && p.price > maxPrice) return false;
+
+    if (p.priceType === "request_quote") {
+      if (!showPriceOnRequest) return false;
+    } else if (hasPriceRange) {
+      if (p.price === null) return false;
+      if (p.price < minPrice) return false;
+      if (queryParams.maxPrice && p.price > maxPrice) return false;
+    }
+
     if (p.dimensions.width < minWidth || p.dimensions.width > maxWidth) return false;
     if (p.dimensions.height < minHeight || p.dimensions.height > maxHeight) return false;
     if (p.dimensions.depth < minDepth || p.dimensions.depth > maxDepth) return false;

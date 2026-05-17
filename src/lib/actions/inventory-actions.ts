@@ -18,7 +18,9 @@ function mapParsedToInput(values: InventoryProductSchema) {
     sku: values.sku,
     slug: values.slug,
     category: values.category,
+    priceType: values.priceType,
     price: values.price,
+    currency: values.currency,
     stock: values.stock,
     color: values.color,
     colorHex: values.colorHex,
@@ -206,11 +208,11 @@ import { redirect } from 'next/navigation';
 import { products, productTranslations } from '@/db/schema';
 import { randomUUID } from 'crypto';
 
-export async function createDraftProductAction(formData?: FormData) {
+export async function createDraftProductAction() {
   return await withAdmin(async () => {
     let draftId = '';
     try {
-      const userId = await getAuthorizedActionUserId();
+      await getAuthorizedActionUserId();
       const id = randomUUID();
       draftId = id;
       const shortId = id.slice(0, 8);
@@ -221,7 +223,9 @@ export async function createDraftProductAction(formData?: FormData) {
           sku: `DRAFT-${shortId}`,
           slug: `draft-${shortId}`,
           category: 'dining-tables',
-          price: "0",
+          priceType: 'request_quote',
+          price: null,
+          currency: 'TRY',
           stock: 0,
           color: 'Anthracite',
           colorHex: '#383838',

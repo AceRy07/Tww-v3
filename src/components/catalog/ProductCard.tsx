@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/data';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { getProductPriceDisplay } from '@/lib/pricing';
 
 interface ProductCardProps {
   product: Product;
@@ -54,10 +55,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         </p>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-foreground">
-            {product.price.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', {
-              style: 'currency',
-              currency: 'TRY',
-              maximumFractionDigits: 0,
+            {getProductPriceDisplay({
+              priceType: product.priceType,
+              price: product.price,
+              currency: product.currency,
+              locale,
             })}
           </p>
           <p className="text-xs text-muted-foreground">

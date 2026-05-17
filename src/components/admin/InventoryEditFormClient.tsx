@@ -6,13 +6,16 @@ import { toast } from 'sonner';
 import { createInventoryProductAction, updateInventoryProductAction } from '@/lib/actions/inventory-actions';
 import ImageManager, { type ManagedProductImage } from '@/components/admin/ImageManager';
 import { CATEGORY_VALUES, COLOR_VALUES } from '@/lib/product-config';
+import { PRICE_TYPE_LABELS, PRODUCT_PRICE_TYPES, type ProductCurrency, type ProductPriceType } from '@/lib/pricing';
 
 type Product = {
   sku: string;
   slug: string;
   category: string;
   color: string;
-  price: number;
+  priceType: ProductPriceType;
+  price: number | null;
+  currency: ProductCurrency;
   stock: number;
   colorHex: string;
   images: string[];
@@ -40,6 +43,7 @@ export default function InventoryEditFormClient({ productId, product, dbCategori
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [hasPendingUploads, setHasPendingUploads] = useState(false);
+  const [priceType, setPriceType] = useState<ProductPriceType>(product.priceType);
 
   const isNew = productId === 'new';
   const isDraft = !isNew && product.sku.startsWith('DRAFT-');
@@ -171,17 +175,46 @@ export default function InventoryEditFormClient({ productId, product, dbCategori
         </label>
 
         <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Pricing Type</span>
+          <select
+            name="priceType"
+            value={priceType}
+            onChange={(event) => setPriceType(event.target.value as ProductPriceType)}
+            className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
+          >
+            {PRODUCT_PRICE_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {PRICE_TYPE_LABELS[type].en}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
           <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Fiyat</span>
           <input
             name="price"
             type="number"
             step="0.01"
             min="0"
-            defaultValue={isBlank ? '' : product.price}
-            placeholder="0.00"
-            className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
-            required
+            defaultValue={isBlank || product.price === null ? '' : product.price}
+            placeholder={priceType === 'request_quote' ? 'Price optional' : '0.00'}
+            className="min-h-10 border border-[#2a2a2a] bg-transparent px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a] disabled:opacity-50"
+            required={priceType !== 'request_quote'}
+            disabled={priceType === 'request_quote'}
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8e8e8e]">Currency</span>
+          <select
+            name="currency"
+            defaultValue={product.currency}
+            className="min-h-10 border border-[#2a2a2a] bg-[#131313] px-3 text-sm text-white focus:outline-none focus:border-[#4a4a4a]"
+          >
+            <option value="TRY">TRY</option>
+            <option value="USD">USD</option>
+          </select>
         </label>
 
         <label className="flex flex-col gap-1.5">

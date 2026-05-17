@@ -20,12 +20,14 @@ import {
   normalizeInquiryStatus,
   type InquiryStatus,
 } from '@/lib/inquiry-status';
+import { formatProductPrice, type ProductCurrency } from '@/lib/pricing';
 
 type ProductDetails = {
   product?: string;
   productName?: string;
   dimensions?: string;
   notes?: string;
+  displayedPriceText?: string;
 };
 
 export type InquiryPipelineItem = {
@@ -34,6 +36,8 @@ export type InquiryPipelineItem = {
   customerEmail: string;
   status: InquiryStatus | null;
   productDetails: ProductDetails | null;
+  quotedPrice: string | null;
+  quotedCurrency: ProductCurrency;
   createdAt: string | null;
 };
 
@@ -60,6 +64,15 @@ function getDimensionsText(productDetails: ProductDetails | null): string {
   return dimensions && dimensions.trim().length > 0 ? dimensions : '';
 }
 
+function getPriceText(inquiry: InquiryPipelineItem): string {
+  if (inquiry.quotedPrice) {
+    return `${formatProductPrice(Number(inquiry.quotedPrice), inquiry.quotedCurrency, 'tr')} quoted`;
+  }
+
+  const snapshotText = inquiry.productDetails?.displayedPriceText;
+  return snapshotText && snapshotText.trim().length > 0 ? snapshotText : 'TBD';
+}
+
 function InquiryCard({
   inquiry,
   isUpdating,
@@ -70,6 +83,7 @@ function InquiryCard({
   const status = normalizeInquiryStatus(inquiry.status);
   const product = getProductText(inquiry.productDetails);
   const dimensions = getDimensionsText(inquiry.productDetails);
+  const priceText = getPriceText(inquiry);
   const isInProduction = status === 'in_production';
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: inquiry.id,
@@ -109,6 +123,9 @@ function InquiryCard({
       {/* Product info */}
       <div className="flex flex-col gap-2">
         <p className="font-[Inter,sans-serif] text-[14px] text-[#c4c7c8] leading-[1.6]">{product}</p>
+        <p className="font-[Inter,sans-serif] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">
+          {priceText}
+        </p>
         {dimensions && (
           <div className="flex gap-2 flex-wrap mt-1">
             <span className="border border-[#2a2a2a] px-3 py-1 font-[Inter,sans-serif] text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8e9192]">

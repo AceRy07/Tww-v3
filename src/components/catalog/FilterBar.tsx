@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { PRICE_COPY } from '@/lib/pricing';
 
 type FilterBarProps = {
   categoryOptions: Array<{ slug: string; name: string }>;
@@ -21,6 +22,7 @@ export default function FilterBar({ categoryOptions, colorOptions }: FilterBarPr
   const selectedColors = searchParams.getAll('color');
   const minPrice = Number(searchParams.get('minPrice') ?? 0);
   const maxPrice = Number(searchParams.get('maxPrice') ?? 10000);
+  const showPriceOnRequest = searchParams.get('showPriceOnRequest') !== 'false';
   const minWidth = Number(searchParams.get('minWidth') ?? 0);
   const maxWidth = Number(searchParams.get('maxWidth') ?? 300);
   const minHeight = Number(searchParams.get('minHeight') ?? 0);
@@ -71,6 +73,7 @@ export default function FilterBar({ categoryOptions, colorOptions }: FilterBarPr
     selectedColors.length > 0 ||
     minPrice > 0 ||
     maxPrice < 10000 ||
+    !showPriceOnRequest ||
     minWidth > 0 ||
     maxWidth < 300 ||
     minHeight > 0 ||
@@ -174,6 +177,17 @@ export default function FilterBar({ categoryOptions, colorOptions }: FilterBarPr
             />
           </div>
         </div>
+        <label className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showPriceOnRequest}
+            onChange={(event) =>
+              updateParams({ showPriceOnRequest: event.target.checked ? null : 'false' })
+            }
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>{PRICE_COPY.showRequestQuoteProducts[locale]}</span>
+        </label>
       </div>
 
       <div className="pt-8 border-t border-border">
