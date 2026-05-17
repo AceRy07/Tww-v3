@@ -3,13 +3,16 @@ import 'server-only';
 import Image from 'next/image';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
 import { inquiries, products } from '@/db/schema';
-import { Button } from '@/components/ui/button';
-import { updateInquiryStatus } from '@/lib/actions/inquiry-actions';
+import InquiryStatusActions from '@/components/admin/InquiryStatusActions';
+import {
+  INQUIRY_STATUS_LABELS,
+  INQUIRY_STATUS_META,
+  normalizeInquiryStatus,
+} from '@/lib/inquiry-status';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -54,41 +57,6 @@ function asText(value: unknown, fallback = '—'): string {
   if (typeof value !== 'string') return fallback;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : fallback;
-}
-
-function getStatusMeta(status: string | null) {
-  switch (status) {
-    case 'quoted':
-      return {
-        label: 'Quoted',
-        badgeClass: 'border-[#1f4f2f] bg-[#102117] text-[#86efac]',
-        dotClass: 'bg-[#22c55e]',
-      };
-    case 'in_production':
-      return {
-        label: 'In Production',
-        badgeClass: 'border-[#3f3a1d] bg-[#1f1a0f] text-[#facc15]',
-        dotClass: 'bg-[#eab308]',
-      };
-    case 'shipped':
-      return {
-        label: 'Shipped',
-        badgeClass: 'border-[#153a5a] bg-[#0d1a26] text-[#7dd3fc]',
-        dotClass: 'bg-[#0ea5e9]',
-      };
-    case 'completed':
-      return {
-        label: 'Completed',
-        badgeClass: 'border-[#2e2e2e] bg-[#161616] text-[#e5e7eb]',
-        dotClass: 'bg-[#e5e7eb]',
-      };
-    default:
-      return {
-        label: 'Pending',
-        badgeClass: 'border-[#5a2626] bg-[#261414] text-[#fca5a5]',
-        dotClass: 'bg-[#ef4444]',
-      };
-  }
 }
 
 export default async function AdminInquiryDetailPage({ params }: PageProps) {
@@ -139,20 +107,9 @@ export default async function AdminInquiryDetailPage({ params }: PageProps) {
   const productDimensions = asText(productDetails?.dimensions, 'Not provided');
   const specialNotes = asText(productDetails?.notes, 'No special notes');
   const messageContent = asText(productDetails?.notes, 'No message content');
-  const statusMeta = getStatusMeta(inquiry.status ?? 'pending');
-
-  async function markAsQuoted() {
-    'use server';
-
-    const result = await updateInquiryStatus({ id: inquiry.id, status: 'quoted' });
-    if ('error' in result) {
-      console.error('[markAsQuoted] Failed to set inquiry as quoted:', result.error);
-      return;
-    }
-
-    revalidatePath('/admin/inquiries');
-    revalidatePath(`/admin/inquiries/${inquiry.id}`);
-  }
+  const status = normalizeInquiryStatus(inquiry.status);
+  const statusMeta = INQUIRY_STATUS_META[status];
+  const statusLabel = INQUIRY_STATUS_LABELS[status];
 
   return (
     <section className="mx-auto w-full max-w-[1440px] bg-[#131313]">
@@ -176,24 +133,15 @@ export default async function AdminInquiryDetailPage({ params }: PageProps) {
           <div className="flex flex-wrap items-center gap-3">
             <div
               className={`flex h-12 items-center border px-4 ${statusMeta.badgeClass}`}
-              aria-label={`Status: ${statusMeta.label}`}
+              aria-label={`Status: ${statusLabel}`}
             >
               <span className={`mr-3 h-2 w-2 ${statusMeta.dotClass}`} />
               <span className="text-[12px] font-semibold uppercase tracking-[0.1em]">
-                {statusMeta.label}
+                {statusLabel}
               </span>
             </div>
 
-            <form action={markAsQuoted}>
-              <Button
-                type="submit"
-                variant="outline"
-                className="h-12 rounded-none border-[#2a2a2a] bg-[#0e0e0e] px-4 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#d3d3d3] hover:border-white hover:bg-[#0e0e0e] hover:text-white"
-                disabled={inquiry.status === 'quoted'}
-              >
-                {inquiry.status === 'quoted' ? 'Teklif Verildi' : 'Teklif Verildi Olarak Isaretle'}
-              </Button>
-            </form>
+            <InquiryStatusActions inquiryId={inquiry.id} currentStatus={status} />
           </div>
         </div>
       </div>

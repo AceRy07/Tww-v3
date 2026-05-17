@@ -121,9 +121,11 @@ export type NewProductImageRow = typeof productImages.$inferInsert;
 export const inquiryStatusEnum = pgEnum('inquiry_status', [
   'pending',
   'quoted',
+  'approved',
   'in_production',
-  'shipped',
+  'qc_packaging',
   'completed',
+  'cancelled',
 ]);
 
 export const inquiries = pgTable('inquiries', {

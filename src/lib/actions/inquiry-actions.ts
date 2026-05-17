@@ -7,6 +7,8 @@ import { Resend } from 'resend';
 import { db } from '@/lib/db';
 import { inquiries } from '@/db/schema';
 import { hasLocale } from '@/i18n/config';
+import { requireAdmin } from '@/lib/auth';
+import { INQUIRY_STATUSES, type InquiryStatus } from '@/lib/inquiry-status';
 
 const inquirySchema = z.object({
   name: z.string().min(2).max(100),
@@ -25,7 +27,7 @@ export type InquiryActionResult = { success: true } | { error: string };
 
 const inquiryStatusSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(['pending', 'quoted', 'in_production', 'shipped', 'completed']),
+  status: z.enum(INQUIRY_STATUSES),
 });
 
 export async function submitInquiry(input: InquiryActionInput): Promise<InquiryActionResult> {
@@ -34,7 +36,7 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
     return { error: 'Invalid form data.' };
   }
 
-  const { name, email, requestedDimensions, message, productName, productSku, productSlug, primaryImageUrl, locale } =
+  const { name, email, requestedDimensions, message, productName, productSku, productSlug, locale } =
     result.data;
 
   const resolvedLocale = locale && hasLocale(locale) ? locale : 'en';
@@ -186,8 +188,10 @@ export async function submitInquiry(input: InquiryActionInput): Promise<InquiryA
 
 export async function updateInquiryStatus(input: {
   id: string;
-  status: 'pending' | 'quoted' | 'in_production' | 'shipped' | 'completed';
+  status: InquiryStatus;
 }): Promise<InquiryActionResult> {
+  await requireAdmin();
+
   const parsed = inquiryStatusSchema.safeParse(input);
   if (!parsed.success) {
     return { error: 'Invalid inquiry status payload.' };
